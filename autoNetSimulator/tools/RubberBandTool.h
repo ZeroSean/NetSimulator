@@ -24,7 +24,7 @@ public:
     /**
      * 在场景中绘制矩形
      */
-    virtual void draw(QPainter *painter, const QRect &rect, const QPointF &cursor);
+    virtual void draw(QPainter *painter, const QRectF &rect, const QPointF &cursor);
 
     /**
      * 鼠标点击控制，记录点击点坐标作为矩形区域的起始点，返回true去接收后续子事件

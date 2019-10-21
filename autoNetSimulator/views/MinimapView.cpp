@@ -7,7 +7,7 @@
 #include <QMouseEvent>
 #include <qmath.h>
 
-MinimapView::MinimapView(QWidget *parent = 0) :
+MinimapView::MinimapView(QWidget *parent) :
     QGraphicsView(parent),
     _scene(new QGraphicsScene(this))
 {

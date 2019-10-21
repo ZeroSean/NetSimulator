@@ -10,13 +10,13 @@
 #include <QMouseEvent>
 #include <QCommonStyle>
 
-RubberBandTool::RubberBandTool(QObject *parent = 0) :
+RubberBandTool::RubberBandTool(QObject *parent) :
     AbstractTool(parent)
 {
 
 }
 
-void RubberBandTool::draw(QPainter *painter, const QRect &rect, const QPointF &cursor) {
+void RubberBandTool::draw(QPainter *painter, const QRectF &rect, const QPointF &cursor) {
     double f = 100.0;
 
     painter->save();

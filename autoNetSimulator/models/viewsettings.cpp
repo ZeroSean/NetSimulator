@@ -3,7 +3,7 @@
 /*
 管理floorplan的相关设置
 */
-ViewSettings::ViewSettings(QObject *parent = 0)
+ViewSettings::ViewSettings(QObject *parent)
     : QObject(parent),
       _gridWidth(0.5),
       _gridHeight(0.5),
@@ -15,8 +15,8 @@ ViewSettings::ViewSettings(QObject *parent = 0)
       _floorplanYOffset(0),
       _showOrigin(true),
       _showGrid(true),
-      _floorplanPath(""),
-      _floorplanShow(false)
+      _floorplanShow(false),
+      _floorplanPath("")
 {
     QObject::connect(this, SIGNAL(gridWidthChanged(double)), this, SLOT(viewSettingsChanged()));
     QObject::connect(this, SIGNAL(gridHeightChanged(double)), this, SLOT(viewSettingsChanged()));
@@ -79,11 +79,11 @@ bool ViewSettings::floorplanYFlip() const {
     return _floorplanYFlip;
 }
 
-bool ViewSettings::floorplanXScale() const {
+double ViewSettings::floorplanXScale() const {
     return _floorplanXScale;
 }
 
-bool ViewSettings::floorplanYScale() const {
+double ViewSettings::floorplanYScale() const {
     return _floorplanYScale;
 }
 

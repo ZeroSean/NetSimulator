@@ -15,8 +15,8 @@ class ViewSettings : public QObject {
     Q_PROPERTY(double gridWidth READ gridWidth WRITE setGridWidth NOTIFY gridWidthChanged)
     Q_PROPERTY(double gridHeight READ gridHeight WRITE setGridHeight NOTIFY gridHeightChanged)
 
-    Q_PROPERTY(bool floorplanXFlip READ floorplanXFlip WRITE floorplanXFlip NOTIFY floorplanXFlipChanged)
-    Q_PROPERTY(bool floorplanYFlip READ floorplanYFlip WRITE floorplanYFlip NOTIFY floorplanYFlipChanged)
+    Q_PROPERTY(bool floorplanXFlip READ floorplanXFlip WRITE setFloorplanXFlip NOTIFY floorplanXFlipChanged)
+    Q_PROPERTY(bool floorplanYFlip READ floorplanYFlip WRITE setFloorplanYFlip NOTIFY floorplanYFlipChanged)
 
     Q_PROPERTY(double floorplanXScale READ floorplanXScale WRITE setFloorplanXScale NOTIFY floorplanXScaleChanged)
     Q_PROPERTY(double floorplanYScale READ floorplanYScale WRITE setFloorplanYScale NOTIFY floorplanYScaleChanged)

@@ -6,16 +6,16 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>300</height>
+    <width>517</width>
+    <height>294</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>DecaRangeRTLS</string>
+   <string>NetSimulator</string>
   </property>
   <property name="windowIcon">
-   <iconset resource="../res/resources.qrc">
-    <normaloff>:/icons/DWctrler.ico</normaloff>:/icons/DWctrler.ico</iconset>
+   <iconset>
+    <normaloff>../res/andian.ico</normaloff>../res/andian.ico</iconset>
   </property>
   <widget class="GraphicsWidget" name="graphicsWidget"/>
   <widget class="QMenuBar" name="menuBar">
@@ -23,8 +23,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>400</width>
-     <height>21</height>
+     <width>517</width>
+     <height>23</height>
     </rect>
    </property>
    <widget class="QMenu" name="viewMenu">
@@ -106,8 +106,6 @@
    <container>1</container>
   </customwidget>
  </customwidgets>
- <resources>
-  <include location="../res/resources.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>

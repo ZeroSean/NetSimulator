@@ -18,7 +18,7 @@ class QAbstractGraphicsShapeItem;
 class QGraphicsItem;
 
 struct Tag{
-    Tad(void) {
+    Tag(void) {
         idx = 0;
     }
     quint64 id;
@@ -84,7 +84,7 @@ public slots:
     void clearTags(void);
 
     void setShowTagHistory(bool show);
-    void CommunicateRangeValue(double value);
+    void communicateRangeValue(double value);
     void zone2Value(double value);
     void tagHistoryNumber(int value);
 

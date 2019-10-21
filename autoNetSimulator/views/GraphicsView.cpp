@@ -37,7 +37,7 @@ GraphicsView::~GraphicsView() {
 }
 
 void GraphicsView::translateView(qreal dx, qreal dy) {
-    setVisibleRect(_visibleRect.translate(dx, dy););
+    setVisibleRect(_visibleRect.translated(dx, dy));
 }
 
 void GraphicsView::scaleView(qreal sx, qreal sy) {
@@ -72,7 +72,7 @@ void GraphicsView::centerRect(const QRectF &visibleRect) {
     //是图形居中显示
     qreal s = 1.206 * 1.2;
     setVisibleRect(visibleRect);
-    scaleView(s, s, this->_visibleRect.center())
+    scaleView(s, s, this->_visibleRect.center());
 }
 
 void GraphicsView::centerAt(double x, double y) {
@@ -146,12 +146,14 @@ void GraphicsView::mouseMoveEvent(QMouseEvent *event) {
         break;
 
     case PanningMouseContext:
+    {
         QPoint mouse = event->pos();
         QPoint mouseDiff = (mouse - _lastMouse);
         _lastMouse = mouse;
-        QPoint mappedMouseDiff = mapToScene(0, 0) - mapToScene(mouseDiff);
+        QPointF mappedMouseDiff = mapToScene(0, 0) - mapToScene(mouseDiff);
         translateView(mappedMouseDiff.x(), mappedMouseDiff.y());
         break;
+    }
 
     case DefaultMouseContext:
         if(event->buttons() & Qt::LeftButton) {
@@ -202,7 +204,7 @@ void GraphicsView::contextMenuEvent(QContextMenuEvent *event) {
 
 void GraphicsView::wheelEvent(QWheelEvent *event) {
     qreal s = 2 - qPow((double)2.0, event->delta() / 360.0);
-    scalaView(s, s, mapToScene(event->pos()));
+    scaleView(s, s, mapToScene(event->pos()));
 }
 
 void GraphicsView::showEvent(QShowEvent *event) {
@@ -282,7 +284,7 @@ void GraphicsView::drawBackground(QPainter *painter, const QRectF &rect) {
         drawGrid(painter, rect);
     }
     if(DisplayApplication::viewSettings()->originShow()) {
-        drawOrigin(painter, rect);
+        drawOrigin(painter);
     }
 }
 

@@ -35,7 +35,7 @@ public:
      * @param rect the area which should be repainted
      * @param cursor the current position of the mouse, in scene coordinates
      */
-    virtual void draw(QPainter *painter, const QRect &rect, const QPointF &cursor) {
+    virtual void draw(QPainter *painter, const QRectF &rect, const QPointF &cursor) {
         Q_UNUSED(painter)
         Q_UNUSED(rect)
         Q_UNUSED(cursor)

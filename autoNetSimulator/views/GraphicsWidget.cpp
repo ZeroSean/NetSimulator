@@ -24,7 +24,6 @@ GraphicsWidget::GraphicsWidget(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::GraphicsWidget)
 {
-
     QDesktopWidget desktop;
     int desktopHeight = desktop.geometry().height();
     int desktopWidth = desktop.geometry().width();
@@ -34,7 +33,7 @@ GraphicsWidget::GraphicsWidget(QWidget *parent) :
 
     ui->graphicsView->setScene(this->_scene);
     ui->graphicsView->scale(1, -1);
-    ui->graphicsView->setBaseSize(desktopHeight * 0.75, desktopWidth * 0.75);
+    ui->graphicsView->setBaseSize(desktopHeight, desktopWidth);
 
     _historyLength = 20;
     _showHistory = _showHistoryP = true;
@@ -173,7 +172,7 @@ void GraphicsWidget::clearTags() {
                 tag->tagLabel = NULL;
             }
             //删除历史数据
-            for(int idx = 0; i < _historyLength; ++idx) {
+            for(int idx = 0; idx < _historyLength; ++idx) {
                 QAbstractGraphicsShapeItem *tag_p = tag->p[idx];
                 if(tag_p) {
                     tag_p->setOpacity(0);
@@ -196,11 +195,20 @@ void GraphicsWidget::tagIDToString(quint64 tagId, QString *t) {
 }
 
 void GraphicsWidget::insertTag(int id, QString &t, bool showR95, bool showLable, QString &lable) {
-
+    Q_UNUSED(id)
+    Q_UNUSED(t)
+    Q_UNUSED(showR95)
+    Q_UNUSED(showLable)
+    Q_UNUSED(lable)
 }
 
 void GraphicsWidget::insertAnchor(int id, double x, double y, double z, int *array, bool show) {
-
+    Q_UNUSED(id)
+    Q_UNUSED(x)
+    Q_UNUSED(y)
+    Q_UNUSED(z)
+    Q_UNUSED(array)
+    Q_UNUSED(show)
 }
 
 void GraphicsWidget::addNewTag(quint64 tagId) {
@@ -412,11 +420,11 @@ void GraphicsWidget::tagRange(quint64 tagId, quint64 aId, double range) {
 }
 
 void GraphicsWidget::tagHistory(quint64 tagId) {
-    Tag &tag = this->_tags.value(tagId, NULL);
+    Tag *tag = this->_tags.value(tagId, NULL);
     for(int i = 0; i < _historyLength; ++i) {
-        QAbstractGraphicsShapeItem *tag_p = tag.p[i];
+        QAbstractGraphicsShapeItem *tag_p = tag->p[i];
         if(tag_p) {
-            int j = tag.idx - i;
+            int j = tag->idx - i;
             if(j < 0) {
                 j += _historyLength;
             }
@@ -434,8 +442,8 @@ void GraphicsWidget::tagHistoryNumber(int value) {
 
     //先移除旧的历史数据
     setShowTagHistory(false);
-    for(Tag &tag : _tags) {
-        tag.p.resize(value);
+    for(Tag *tag : _tags) {
+        tag->p.resize(value);
     }
 
     _historyLength = value;
@@ -444,26 +452,26 @@ void GraphicsWidget::tagHistoryNumber(int value) {
     _busy = false;
 }
 
-void GraphicsWidget::CommunicateRangeValue(double value) {
+void GraphicsWidget::communicateRangeValue(double value) {
     _commuRangeVal = value;
 }
 
 void GraphicsWidget::zone2Value(double value) {
-
+    Q_UNUSED(value)
 }
 
 //将所有基站居中显示
 void GraphicsWidget::centerOnAnchor() {
     Anchor *a1 = this->_anchors.value(0, NULL);
     Anchor *a2 = this->_anchors.value(1, NULL);
-    Anchor *a2 = this->_anchors.value(2, NULL);
+    Anchor *a3 = this->_anchors.value(2, NULL);
 
     QPolygonF p1 = QPolygonF() << QPointF(a1->a->pos()) << QPointF(a2->a->pos()) << QPointF(a3->a->pos());
 
     emit centerRect(p1.boundingRect());
 }
 
-void GraphicsWidget::setShowTagHistory(bool show) {
+void GraphicsWidget::setShowTagHistory(bool set) {
     _busy = true;
 
     if(set != _showHistory) {
@@ -500,8 +508,8 @@ void GraphicsWidget::addNewAnchor(quint64 ancId, bool show) {
 
     qDebug() << "Add new Anchor: 0x:" << QString::number(ancId, 16);
 
-    _anchors.insert(anchId, new(Anchor));
-    anc = this->_anchors.value(anchId, NULL);
+    _anchors.insert(ancId, new(Anchor));
+    anc = this->_anchors.value(ancId, NULL);
     anc->a = NULL;
 
     {
@@ -514,7 +522,7 @@ void GraphicsWidget::addNewAnchor(quint64 ancId, bool show) {
         font.setPointSize(FONT_SIZE);
         font.setWeight(QFont::Normal);
 
-        anc->ancLabel->setFocus(font);
+        anc->ancLabel->setFont(font);
 
         this->_scene->addItem(anc->ancLabel);
     }

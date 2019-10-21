@@ -9,7 +9,7 @@
 #include <QPainter>
 #include <QDebug>
 
-ScaleTool::ScaleTool(Axis a, QObject *parent = 0) :
+ScaleTool::ScaleTool(Axis a, QObject *parent) :
     AbstractTool(parent),
     _axis(a),
     _state(FirstPoint)

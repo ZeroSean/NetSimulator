@@ -15,15 +15,16 @@ public:
     explicit ViewSettingsWidget(QWidget *parent = 0);
     ~ViewSettingsWidget();
 
-    int applyFloorplanPic(const QString *path);
+    int applyFloorplanPic(const QString &path);
 
 signals:
-    void saveViewSetting(void);
+    void saveViewSettings(void);
 
 protected slots:
     void onReady();
 
     void floorplanOpenClicked();
+    void ancConfigSelectClicked();
     void originClicked();
     void scaleClicked();
     void gridShowClicked();
@@ -38,10 +39,10 @@ protected slots:
     void zone2EditFinished(void);
     void tagHistoryNumberValueChanged(int value);
 
-    void showGridOrigin(bool orig, bool grid);
+    void showGridOrigin(bool grid, bool orig);
 
     void getFloorplanPic(void);
-    void showSave(void);
+    void showSave(bool arg);
 
     void setTagHistory(int h);
     void loggingClicked(void);
@@ -51,6 +52,7 @@ private:
 
     bool _logging;
     bool _floorplanOpen;
+    bool _ancConfigSelect;
 
 };
 

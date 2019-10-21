@@ -4,6 +4,6 @@
         <file>logo.jpg</file>
     </qresource>
     <qresource prefix="/icons">
-        <file>DWctrler.ico</file>
+        <file>andian.ico</file>
     </qresource>
 </RCC>

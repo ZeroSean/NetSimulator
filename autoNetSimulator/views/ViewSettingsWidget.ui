@@ -184,6 +184,44 @@
         <string/>
        </property>
       </widget>
+      <widget class="QLabel" name="ancConfigLable">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>240</y>
+         <width>194</width>
+         <height>12</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>No select anchors config files: </string>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="ancConfigSelect_pb">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>260</y>
+         <width>87</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>Select</string>
+       </property>
+      </widget>
      </widget>
      <widget class="QWidget" name="floorplan_tab">
       <attribute name="title">
