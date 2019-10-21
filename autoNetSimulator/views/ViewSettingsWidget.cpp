@@ -150,6 +150,27 @@ void ViewSettingsWidget::ancConfigSelectClicked() {
         //参数：父组件、对话框标题、默认打开目录、后缀名过滤器
         QString path = QFileDialog::getOpenFileName(this, "Open txt", "./", "Txt (*.txt)");
 
+        if(path.isNull()) {
+            return;
+        }
+
+        QFile file(path);
+        if(!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            qDebug(qPrintable(QString("Error: cannot read file (%1) %2").arg(path).arg(file.errorString())));
+            return;
+        } else {
+            QTextStream stream(&file);
+            QString line = "";
+            while(!(line = stream.readLine()).isNull()) {
+                qDebug() << line;
+            }
+        }
+
+
+
+        _ancConfigSelect = true;
+        ui->ancConfigLable->setText("anc file:" + path);
+
     }
 }
 
