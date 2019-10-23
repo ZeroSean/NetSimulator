@@ -40,11 +40,27 @@ struct Tag{
 };
 
 struct Anchor{
+    Anchor(void) {
+        id = 0;
+        a = NULL;
+        range = NULL;
+        ancLabel = NULL;
+        x = 0;
+        y = 0;
+        z = 0;
+        commuRange = 5;
+    }
     quint64 id;
     QAbstractGraphicsShapeItem *a;
+    QAbstractGraphicsShapeItem *range;
     QGraphicsSimpleTextItem *ancLabel;
     bool show;
     QPointF pos;
+
+    double x;
+    double y;
+    double z;
+    double commuRange;
 };
 
 class GraphicsWidget : public QWidget {
@@ -79,14 +95,18 @@ public slots:
     void tagPos(quint64 tagId, double x, double y, double z);
     void tagStats(quint64 tagId, double x, double y, double z, double r95);
     void tagRange(quint64 tagId, quint64 aId, double range);
-    void anchPos(quint64 anchId, double x, double y, double z, bool show);
+    void anchPos(quint64 anchId, double x, double y, double z, double comRange, bool show);
+    void ancCommunicateRange(Anchor * anc, double x, double y, double z, double comRange, bool show);
 
     void clearTags(void);
+    void clearAnchors(void);
 
     void setShowTagHistory(bool show);
     void communicateRangeValue(double value);
     void zone2Value(double value);
     void tagHistoryNumber(int value);
+
+    void ancConfigFileChanged();
 
 protected slots:
     void onReady();

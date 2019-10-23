@@ -43,6 +43,8 @@ ViewSettingsWidget::ViewSettingsWidget(QWidget *parent) :
     QObject::connect(DisplayApplication::viewSettings(), SIGNAL(showGO(bool, bool)), this, SLOT(showGridOrigin(bool,bool)));
     QObject::connect(DisplayApplication::viewSettings(), SIGNAL(setFloorplanPic()), this, SLOT(getFloorplanPic()));
 
+    QObject::connect(DisplayApplication::viewSettings(), SIGNAL(ancConfigFileChanged()), this, SLOT(ancConfigFileChanged()));
+
     QObject::connect(ui->logging_pb, SIGNAL(clicked(bool)), this, SLOT(loggingClicked()));
 
     QObject::connect(ui->scaleX_pb, SIGNAL(clicked(bool)), this, SLOT(scaleClicked()));
@@ -88,7 +90,6 @@ void ViewSettingsWidget::onReady() {
 
     DisplayApplication::graphicsWidget()->communicateRangeValue(ui->communicateRange->value());
     DisplayApplication::graphicsWidget()->zone2Value(ui->zone2->value());
-
 }
 
 ViewSettingsWidget::~ViewSettingsWidget() {
@@ -146,31 +147,24 @@ void ViewSettingsWidget::floorplanOpenClicked() {
 }
 
 void ViewSettingsWidget::ancConfigSelectClicked() {
-    if(_ancConfigSelect == false) {
-        //参数：父组件、对话框标题、默认打开目录、后缀名过滤器
-        QString path = QFileDialog::getOpenFileName(this, "Open txt", "./", "Txt (*.txt)");
+    //参数：父组件、对话框标题、默认打开目录、后缀名过滤器
+    QString path = QFileDialog::getOpenFileName(this, "Open txt", "./", "Txt (*.txt)");
 
-        if(path.isNull()) {
-            return;
-        }
+    if(path.isNull()) {
+        return;
+    }
 
-        QFile file(path);
-        if(!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            qDebug(qPrintable(QString("Error: cannot read file (%1) %2").arg(path).arg(file.errorString())));
-            return;
-        } else {
-            QTextStream stream(&file);
-            QString line = "";
-            while(!(line = stream.readLine()).isNull()) {
-                qDebug() << line;
-            }
-        }
+    DisplayApplication::viewSettings()->setAncConfigFilePath(path);
 
+    //ui->ancConfigLable->setText("anc file:" + path);
+}
 
+void ViewSettingsWidget::ancConfigFileChanged() {
+    QString path = DisplayApplication::viewSettings()->getAncConfigFilePath();
 
-        _ancConfigSelect = true;
-        ui->ancConfigLable->setText("anc file:" + path);
+    if(!path.isNull()) {
 
+        ui->ancConfigLable->setText("anc file:" + QFileInfo(path).fileName());
     }
 }
 

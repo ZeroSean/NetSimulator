@@ -180,6 +180,8 @@ void MainWindow::loadConfigFile(QString filename) {
 
                     vs->setFloorplanPathN();
                     vs->setSaveFP(((e.attribute("saveFP", "")).toInt() == 1) ? true : false);
+
+                    vs->setAncConfigFilePath(e.attribute("ancPath", ""));
                 }
             }
             n = n.nextSibling();
@@ -217,6 +219,9 @@ void MainWindow::saveConfigFile(QString filename, QString cfg) {
             cn.setAttribute("offsetY", QString::number(vs->floorplanYOffset(), 'g', 3));
             cn.setAttribute("fplan", vs->getFloorplanPath());
         }
+
+        cn.setAttribute("ancPath", vs->getAncConfigFilePath());
+
         info.appendChild(cn);
     }
 

@@ -41,6 +41,8 @@ GraphicsWidget::GraphicsWidget(QWidget *parent) :
     _ignore = true;
     _tagSize = 0.15;
 
+    QObject::connect(DisplayApplication::viewSettings(), SIGNAL(ancConfigFileChanged()), this, SLOT(ancConfigFileChanged()));
+
     DisplayApplication::connectReady(this, "onReady()");
 }
 
@@ -143,7 +145,7 @@ void GraphicsWidget::saveConfigFile(QString filename) {
 }
 
 void GraphicsWidget::clearTags() {
-    qDebug() << "table size: " << _tags.size();
+    qDebug() << "tags size: " << _tags.size();
 
     QMap<quint64, Tag*>::iterator i = _tags.begin();
     while(i != _tags.end()) {
@@ -184,10 +186,46 @@ void GraphicsWidget::clearTags() {
                 }
             }
         }
+        delete(tag);
+        *i = NULL;
     }
     _tags.clear();
 
     qDebug() << "clear tags";
+}
+
+void GraphicsWidget::clearAnchors() {
+    QMap<quint64, Anchor*>::iterator i = _anchors.begin();
+    while(i != _anchors.end()) {
+        //quint64 ancId = i.key();
+        Anchor *anc = i.value();
+
+        if(anc) {
+            if(anc->a) {
+                anc->a->setOpacity(0);   //隐藏
+                this->_scene->removeItem(anc->a);
+                delete(anc->a);
+                anc->a = NULL;
+            }
+            if(anc->ancLabel) {
+                anc->ancLabel->setOpacity(0);   //隐藏
+                this->_scene->removeItem(anc->ancLabel);
+                delete(anc->ancLabel);
+                anc->ancLabel = NULL;
+            }
+            if(anc->range) {
+                anc->range->setOpacity(0);   //隐藏
+                this->_scene->removeItem(anc->range);
+                delete(anc->range);
+                anc->range = NULL;
+            }
+        }
+        delete(anc);
+        *i = NULL;
+    }
+    _anchors.clear();
+
+    qDebug() << "clear anchors";
 }
 
 void GraphicsWidget::tagIDToString(quint64 tagId, QString *t) {
@@ -453,7 +491,13 @@ void GraphicsWidget::tagHistoryNumber(int value) {
 }
 
 void GraphicsWidget::communicateRangeValue(double value) {
-    _commuRangeVal = value;
+    if(value > 0 && fabs(_commuRangeVal - value) > 0.001) {
+        _commuRangeVal = value;
+
+        for(Anchor *anc : _anchors) {
+            ancCommunicateRange(anc, anc->x, anc->y, anc->z, _commuRangeVal, true);
+        }
+    }
 }
 
 void GraphicsWidget::zone2Value(double value) {
@@ -511,6 +555,7 @@ void GraphicsWidget::addNewAnchor(quint64 ancId, bool show) {
     _anchors.insert(ancId, new(Anchor));
     anc = this->_anchors.value(ancId, NULL);
     anc->a = NULL;
+    anc->range = NULL;
 
     {
         anc->ancLabel = new QGraphicsSimpleTextItem(NULL);
@@ -530,7 +575,36 @@ void GraphicsWidget::addNewAnchor(quint64 ancId, bool show) {
     anc->show = show;
 }
 
-void GraphicsWidget::anchPos(quint64 anchId, double x, double y, double z, bool show) {
+void GraphicsWidget::ancCommunicateRange(Anchor * anc, double x, double y, double z, double comRange, bool show) {
+    Q_UNUSED(show)
+    Q_UNUSED(z)
+
+    if(anc->range != NULL) {
+        this->_scene->removeItem(anc->range);
+        delete (anc->range);
+        anc->range = NULL;
+    }
+
+    QAbstractGraphicsShapeItem *anch = this->_scene->addEllipse(-comRange / 2, -comRange / 2, comRange, comRange);
+    anch->setPen(Qt::NoPen);
+    anch->setBrush(QBrush(QColor::fromRgb(102, 171, 13, 128))); //浅绿色
+    anch->setToolTip("0x" + QString::number(anc->id, 16));
+    anc->range = anch;
+
+    QPen pen = QPen(QBrush(Qt::green), 0.005) ;
+    //pen.setColor(Qt::red);
+    pen.setStyle(Qt::SolidLine);
+    pen.setWidthF(0.03);
+
+    anch->setPen(pen);
+
+    anc->range->setOpacity(anc->show ? 1.0 : 0.0);
+    anc->range->setPos(x, y);
+
+    anc->commuRange = comRange;
+}
+
+void GraphicsWidget::anchPos(quint64 anchId, double x, double y, double z, double comRange, bool show) {
     if(_busy) {
         qDebug() << "(Widget - busy IGNORE) anch: 0x" + QString::number(anchId, 16) << " " << x << " " << y << " " << z;
     } else {
@@ -540,7 +614,6 @@ void GraphicsWidget::anchPos(quint64 anchId, double x, double y, double z, bool 
 
         if(!anc) {
             addNewAnchor(anchId, show);
-
             anc = this->_anchors.value(anchId, NULL);
         }
 
@@ -554,10 +627,44 @@ void GraphicsWidget::anchPos(quint64 anchId, double x, double y, double z, bool 
 
         anc->a->setOpacity(anc->show ? 1.0 : 0.0);
         anc->ancLabel->setOpacity(anc->show ? 1.0 : 0.0);
+
         anc->a->setPos(x, y);
         anc->ancLabel->setPos(x + 0.15, y + 0.15);
 
+        anc->x = x;
+        anc->y = y;
+        anc->z = z;
+
+        ancCommunicateRange(anc, x, y, z, comRange, show);
+
         _busy = false;
+    }
+}
+
+void GraphicsWidget::ancConfigFileChanged() {
+    QString path = DisplayApplication::viewSettings()->getAncConfigFilePath();
+
+    QFile file(path);
+    if(!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qDebug(qPrintable(QString("Error: cannot read file (%1) %2").arg(path).arg(file.errorString())));
+        return;
+    } else {
+        QTextStream stream(&file);
+        QString line = "";
+
+        clearAnchors();
+
+        while(!(line = stream.readLine()).isNull()) {
+            qDebug() << line;
+
+            std::string cLine = line.toStdString();
+            int id;
+            double x, y, z;
+            sscanf(cLine.c_str(), "%d:(%lf, %lf, %lf)", &id, &x, &y, &z);
+
+            anchPos(id, x, y, z, _commuRangeVal, true);
+            qDebug() << id << x << y << z;
+        }
     }
 }
 

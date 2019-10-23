@@ -39,6 +39,8 @@ protected slots:
     void zone2EditFinished(void);
     void tagHistoryNumberValueChanged(int value);
 
+    void ancConfigFileChanged();
+
     void showGridOrigin(bool grid, bool orig);
 
     void getFloorplanPic(void);
