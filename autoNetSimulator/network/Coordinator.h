@@ -3,18 +3,22 @@
 
 #include <QObject>
 #include <QMap>
+#include <QThread>
 #include <QDateTime>
 #include <time.h>
 #include <sys/time.h>
 
 #include "InstanceCommon.h"
 
+class InstanceCommon;
+
 void portGetTickCntInit();
 uint32_t portGetTickCnt_10us();
 uint32_t portGetTickCnt();
+u8 SysTick_TimeIsOn_10us(uint32_t time_10us);
 
-struct MsgListNode {
-    ListNode(uint32_t l = 0, uint32_t t = 0, InstanceCommon *ins = NULL, MsgListNode *nex = NULL) {
+struct MsgListNode{
+    MsgListNode(uint32_t l = 0, uint32_t t = 0, InstanceCommon *ins = NULL, MsgListNode *nex = NULL) {
         len = l;
         time = t;
         instance = ins;
@@ -27,8 +31,7 @@ struct MsgListNode {
     event_data_t data;
 };
 
-class Coordinator
-{
+class Coordinator  : public QThread {
 public:
     Coordinator();
 
@@ -38,7 +41,10 @@ public:
     bool msgListEmpty();
     void msgListClear();
 
-    void run();
+    int sendMsg(InstanceCommon *inst, uint8 *data, uint16 len, uint32 dely);
+    void addAnchor(InstanceCommon *anc, uint32 id, double x, double y, double z, double range, uint8 mode);
+
+    virtual void run();
 
 private:
     MsgListNode msgListDummy;

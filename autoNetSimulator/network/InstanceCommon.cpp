@@ -5,7 +5,7 @@ const uint16 rfDelays[2] = {
         (uint16) ((DWT_PRF_64M_RFDLY/ 2.0) * 1e-9 / DWT_TIME_UNITS)
 };
 
-const uint8 dwnsSFDlen[NUM_BR] =
+const uint8 dwnsSFDlen[3] =
 {
     DW_NS_SFD_LEN_110K,
     DW_NS_SFD_LEN_850K,
@@ -15,6 +15,24 @@ const uint8 dwnsSFDlen[NUM_BR] =
 InstanceCommon::InstanceCommon()
 {
 
+}
+
+void InstanceCommon::setPos(double x, double y, double z) {
+    pos[0] = x;
+    pos[1] = y;
+    pos[2] = z;
+}
+
+void InstanceCommon::setRange(double r) {
+    range = r;
+}
+
+const double* InstanceCommon::getPos(void) {
+    return pos;
+}
+
+double InstanceCommon::getRange() {
+    return range;
 }
 
 
@@ -105,7 +123,7 @@ int InstanceCommon::init(int inst_mode) {
     instance_data_t* inst = get_local_structure_ptr(0);
     int result;
 
-    inst->mode =  inst_mode;        // assume listener,
+    inst->mode = INST_MODE(inst_mode);        // assume listener,
     inst->twrMode = LISTENER;
     inst->testAppState = TA_INIT;
     inst->instToSleep = FALSE;
@@ -277,12 +295,12 @@ int InstanceCommon::send_delayed_frame(instance_data_t *inst, int delayedTx) {
     return result;
 }
 
-void InstanceCommon::tx_conf_cb(const dwt_cb_data_t *txd) {
+void InstanceCommon::tx_conf_cb(const event_data_t *cb_data) {
     instance_data_t* inst = get_local_structure_ptr(0);
     uint8 txTimeStamp[5] = {0, 0, 0, 0, 0};
     event_data_t dw_event;
 
-    Q_UNUSED(txd)
+    Q_UNUSED(cb_data)
 
     dw_event.uTimeStamp = portGetTickCnt_10us();
 
@@ -306,7 +324,6 @@ void InstanceCommon::tx_conf_cb(const dwt_cb_data_t *txd) {
     }
 
     inst->monitor = 0;
-
 }
 
 void InstanceCommon::seteventtime(event_data_t *dw_event, uint8* timeStamp) {
@@ -353,6 +370,9 @@ void InstanceCommon::putevent(event_data_t *newevent, uint8 etype)
 event_data_t* InstanceCommon::getevent(int x) {
     instance_data_t* inst = get_local_structure_ptr(0);
     int indexOut = inst->dweventIdxOut;
+
+    Q_UNUSED(x)
+
     if(inst->dwevent[indexOut].type == 0) //exit with "no event"
     {
         dw_event_g.type = 0;
@@ -475,7 +495,7 @@ float InstanceCommon::calc_length_data(float msgdatalen) {
     return msgdatalen ;
 }
 
-void InstanceCommon::instance_set_replydelay(int delayus) {
+void InstanceCommon::set_replydelay(int delayus) {
     instance_data_t *inst = &instance_data[0];
 
     int margin = 3000; //2000 symbols
@@ -537,7 +557,7 @@ void InstanceCommon::instance_set_replydelay(int delayus) {
     finalframe = (int)(preamblelen + (msgdatalen_finalA / 1000.0));
     if(inst->configData.dataRate == DWT_BR_110K) {
         //preamble duration + 16 us for RX on
-        inst->preambleDuration32h = (uint32) (((uint64) instance_convert_usec_to_devtimeu (preamblelen)) >> 8) + DW_RX_ON_DELAY;
+        inst->preambleDuration32h = (uint32) (((uint64) convert_usec_to_devtimeu (preamblelen)) >> 8) + DW_RX_ON_DELAY;
 
         inst->ancRespRxDelay_sy = RX_RESPONSE_TURNAROUND - DW_RX_ON_DELAY;
         inst->tagPollRxDelay_sy = pollframe_sy - 3 * RX_RESPONSE_TURNAROUND;//(grppollframe / 2) + RX_RESPONSE_TURNAROUND + pollframe_sy - gpollframe_sy;
@@ -567,8 +587,8 @@ void InstanceCommon::instance_set_replydelay(int delayus) {
     inst->fwto4RespFrame_sy = respframe_sy;
     inst->fwto4FinalFrame_sy = finalframe_sy;
     printf("gpollframe:%d, pollframe:%d, respframe:%d, finalframe:%d, tagPollRxDelay:%d, tagFinalRxDelay:%d\n", \
-            gpollframe_sy, pollframe_sy, respframe_sy, finalframe_sy, (u32)inst->tagPollRxDelay_sy, (u32)inst->tagFinalRxDelay_sy);
-    printf("fixedPoll:%u, fixedFinal:%u, fixedGuard:%u\n", (u32)inst->fixedPollDelayAnc32h, (u32)inst->fixedFinalDelayAnc32h, (u32)inst->fixedGuardDelay32h);
+            gpollframe_sy, pollframe_sy, respframe_sy, finalframe_sy, (uint32)inst->tagPollRxDelay_sy, (uint32)inst->tagFinalRxDelay_sy);
+    printf("fixedPoll:%u, fixedFinal:%u, fixedGuard:%u\n", (uint32)inst->fixedPollDelayAnc32h, (uint32)inst->fixedFinalDelayAnc32h, (uint32)inst->fixedGuardDelay32h);
 
     inst->BCNfixTime32h = (convert_usec_to_devtimeu (inst->BCNslotDuration_ms * 1000) >> 8);
     inst->SVCfixTime32h = (convert_usec_to_devtimeu (inst->SVCslotDuration_ms * 1000) >> 8);

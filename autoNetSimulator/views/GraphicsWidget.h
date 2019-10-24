@@ -6,6 +6,9 @@
 #include <QAbstractItemView>
 #include <QGraphicsView>
 
+#include "Coordinator.h"
+#include "InstanceAnch.h"
+
 namespace Ui{
 class GraphicsWidget;
 }
@@ -130,6 +133,9 @@ private:
     bool _ignore;
 
     double _commuRangeVal;
+
+    Coordinator *_coor;
+    QMap<quint64, InstanceAnch*> _insAnchors;
 
 };
 

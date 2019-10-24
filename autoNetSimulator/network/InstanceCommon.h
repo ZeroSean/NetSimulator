@@ -10,7 +10,8 @@ class InstanceCommon : public QObject {
     Q_OBJECT
 
 public:
-    InstanceCommon();
+    explicit InstanceCommon();
+    //virtual ~InstanceCommon() = 0;
 
     void set_position(double *pos, u8 flag);
     instance_data_t* get_local_structure_ptr(unsigned int x);
@@ -37,8 +38,6 @@ public:
     //延时发送实现
     int send_delayed_frame(instance_data_t *inst, int delayedTx);
 
-    void tx_conf_cb(const dwt_cb_data_t *txd);
-
     void seteventtime(event_data_t *dw_event, uint8* timeStamp);
     int peekevent(void);
     void putevent(event_data_t *newevent, uint8 etype);
@@ -52,18 +51,27 @@ public:
     uint16 get_rxantdly(void);
     uint8 validranges(void);
     float calc_length_data(float msgdatalen);
-    void instance_set_replydelay(int delayus);
+    void set_replydelay(int delayus);
 
-    virtual void run();
-    virtual void rx_ok_cb(const event_data_t *cb_data) {}
-    virtual void rx_to_cb(const event_data_t *cb_data) {}
-    virtual void rx_err_cb(const event_data_t *cb_data) {}
-    virtual void tx_conf_cb(const event_data_t *cb_data) {}
+    virtual int run() {return 0;}
+    virtual void rx_ok_cb(const event_data_t *cb_data) {Q_UNUSED(cb_data)}
+    virtual void rx_to_cb(const event_data_t *cb_data) {Q_UNUSED(cb_data)}
+    virtual void rx_err_cb(const event_data_t *cb_data) {Q_UNUSED(cb_data)}
+    void tx_conf_cb(const event_data_t *cb_data);
+
+    void setPos(double x, double y, double z);
+    void setRange(double r);
+    const double* getPos(void);
+    double getRange();
 
 private:
     instance_data_t instance_data[2];
 
     event_data_t dw_event_g;
+
+
+    double pos[3];
+    double range;
 };
 
 #endif // INSTANCECOMMON_H

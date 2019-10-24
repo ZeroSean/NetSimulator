@@ -4,6 +4,7 @@
 //#include <string.h>
 //#include <math.h>
 #include <QObject>
+#include <QDebug>
 
 #include "decadeviceapi.h"
 

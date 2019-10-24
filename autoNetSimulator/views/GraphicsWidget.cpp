@@ -22,7 +22,8 @@
 
 GraphicsWidget::GraphicsWidget(QWidget *parent) :
     QWidget(parent),
-    ui(new Ui::GraphicsWidget)
+    ui(new Ui::GraphicsWidget),
+    _coor(NULL)
 {
     QDesktopWidget desktop;
     int desktopHeight = desktop.geometry().height();
@@ -224,6 +225,11 @@ void GraphicsWidget::clearAnchors() {
         *i = NULL;
     }
     _anchors.clear();
+
+    for(InstanceAnch *ins : _insAnchors) {
+        delete ins;
+    }
+    _insAnchors.clear();
 
     qDebug() << "clear anchors";
 }
@@ -652,7 +658,16 @@ void GraphicsWidget::ancConfigFileChanged() {
         QTextStream stream(&file);
         QString line = "";
 
+        if(_coor != NULL) {
+            _coor->quit();
+            QThread::usleep(2000);
+            delete _coor;
+            _coor = NULL;
+        }
+        _coor = new Coordinator();
+
         clearAnchors();
+
 
         while(!(line = stream.readLine()).isNull()) {
             qDebug() << line;
@@ -664,7 +679,12 @@ void GraphicsWidget::ancConfigFileChanged() {
 
             anchPos(id, x, y, z, _commuRangeVal, true);
             qDebug() << id << x << y << z;
+
+            InstanceAnch *ins = new InstanceAnch(_coor);
+            _coor->addAnchor(ins, id, x, y, z, _commuRangeVal, 1);
         }
+
+        _coor->start();
     }
 }
 
