@@ -1,4 +1,4 @@
-#include "GraphicsWidget.h"
+﻿#include "GraphicsWidget.h"
 #include "ui_graphicswidget.h"
 
 #include "DisplayApplication.h"
@@ -220,6 +220,15 @@ void GraphicsWidget::clearAnchors() {
                 delete(anc->range);
                 anc->range = NULL;
             }
+
+            if(!anc->connectLines.isEmpty()) {
+                for(QGraphicsLineItem *item : anc->connectLines.values()) {
+                    item->setOpacity(0);
+                    this->_scene->removeItem(item);
+                    delete item;
+                }
+                anc->connectLines.clear();
+            }
         }
         delete(anc);
         *i = NULL;
@@ -227,6 +236,7 @@ void GraphicsWidget::clearAnchors() {
     _anchors.clear();
 
     for(InstanceAnch *ins : _insAnchors) {
+        QObject::disconnect(ins, SIGNAL(netConnectFinished(uint16,QSet<uint16>,uint16)), this, SLOT(netConnectFinished(uint16,QSet<uint16>,uint16)));
         delete ins;
     }
     _insAnchors.clear();
@@ -668,6 +678,10 @@ void GraphicsWidget::ancConfigFileChanged() {
 
         clearAnchors();
 
+        if(_commuRangeVal < 0.2) {
+            _commuRangeVal = 1;
+        }
+
 
         while(!(line = stream.readLine()).isNull()) {
             qDebug() << line;
@@ -682,10 +696,53 @@ void GraphicsWidget::ancConfigFileChanged() {
 
             InstanceAnch *ins = new InstanceAnch(_coor);
             _coor->addAnchor(ins, id, x, y, z, _commuRangeVal, 1);
+
+            QObject::connect(ins, SIGNAL(netConnectFinished(quint16,QSet<quint16>,quint16)), this, SLOT(netConnectFinished(quint16,QSet<quint16>,quint16)));
         }
 
         _coor->start();
     }
+}
+
+void GraphicsWidget::netConnectFinished(quint16 src, QSet<quint16> dsts, quint16 seat) {
+    while(_busy);
+    _busy = true;
+
+    Anchor *anc = _anchors.value(src, NULL);
+
+    if(!anc) {
+        qDebug() << "unfound anch: 0x" + QString::number(src, 16) << " seat:" << seat;
+        return;
+    }
+
+    if(!anc->connectLines.isEmpty()) {
+        for(QGraphicsLineItem *item : anc->connectLines.values()) {
+            item->setOpacity(0);
+            this->_scene->removeItem(item);
+            delete item;
+        }
+        anc->connectLines.clear();
+    }
+
+    for(uint16 id : dsts) {
+        Anchor *dstAnc = _anchors.value(id, NULL);
+
+        if(dstAnc) {
+            QGraphicsLineItem *line = this->_scene->addLine(anc->x, anc->y, dstAnc->x, dstAnc->y);
+            QPen pen = QPen(QBrush(Qt::red), 0.005);
+            pen.setStyle(Qt::SolidLine);
+            pen.setWidthF(0.03);
+
+            line->setPen(pen);
+            line->setOpacity(1);
+
+            anc->connectLines.insert(id, line);
+        }
+    }
+
+    anc->a->setToolTip("Seat:" + QString::number(seat));
+
+    _busy = false;
 }
 
 

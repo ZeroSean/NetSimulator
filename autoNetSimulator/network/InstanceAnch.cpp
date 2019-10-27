@@ -119,6 +119,9 @@ uint8 InstanceAnch::prepare_join_request_frame(instance_data_t* inst) {
     inst->msg_f.messageData[REQOF] = inst->bcnmag.clusterFrameNum;
 
     inst->psduLength = (JOIN_MSG_LEN + FRAME_CRTL_AND_ADDRESS_S + FRAME_CRC);
+
+    connectSrcAddrs.clear();
+
     return 0;
 }
 
@@ -141,16 +144,24 @@ uint8 InstanceAnch::process_beacon_msg(instance_data_t* inst, event_data_t *dw_e
 
         if((inst->wait4type == dat[0]) && (dat[0] == UWBMAC_FRM_TYPE_CL_JOIN_CFM)) {
             if((addr == inst->instanceAddress16) && (inst->bcnmag.clusterFrameNum < 16)) {
-                printf("Rec[%d] Join Cof: %x[%d]\n", srcAddr16, addr, dat[4]);
+                qDebug() << "Rec[" << srcAddr16 << "] Join Cof: " << addr << "[" << dat[4] << "]";
+
                 if((inst->bcnmag.clusterFrameNum == dat[4]) && (inst->bcnlog[srcClusterFraNum].flag & 0x01)) {
                     inst->bcnlog[srcClusterFraNum].flag &= (~0x01);
                     inst->wait4ackNum -= 1;
+
+                    connectSrcAddrs.insert(srcAddr16);
+
                     if(inst->wait4ackNum == 0) {
                         inst->joinedNet = 1;
                         inst->wait4type = 0;
                         inst->bcnmag.clusterSelfMap = 0x01 << inst->bcnmag.clusterFrameNum;
                         inst->bcnmag.clusterNeigMap = 0;
                         inst->bcnmag.slotSelfMap = 0;
+
+                        qDebug() << inst->instanceAddress16 << "success to join net:" << inst->bcnmag.clusterFrameNum;
+
+                        emit netConnectFinished(inst->instanceAddress16, connectSrcAddrs, inst->bcnmag.clusterFrameNum);
 
                         BCNLog_Clear(inst);
                     }
@@ -170,9 +181,10 @@ uint8 InstanceAnch::process_beacon_msg(instance_data_t* inst, event_data_t *dw_e
         } else if((dat[0] == UWBMAC_FRM_TYPE_TAGS_POS) && (addr == inst->instanceAddress16)) {
             if(inst->gatewayAnchor) {
                 //cpy_from_UWBBuf_to_PosNetBuf(dat[4], &dat[5]);
-                printf("add tag info to service\n");
+                qDebug() << "add tag info to service";
             } else {
-                printf("%d tag info overflow:%d\n", dat[4], cpy_to_PosBuf(dat[4], &dat[5]));
+                //printf("%d tag info overflow:%d\n", dat[4], cpy_to_PosBuf(dat[4], &dat[5]));
+                qDebug() << dat[4] << "tag info overflow: " << cpy_to_PosBuf(dat[4], &dat[5]);
             }
         }
     }
@@ -250,14 +262,14 @@ uint8 InstanceAnch::process_beacon_msg(instance_data_t* inst, event_data_t *dw_e
         uint32 delay = dw_event->uTimeStamp + inst->BCNslotDuration_ms * (inst->BCNslots_num - messageData[CFNOF]) * 100;
 
         if(coor->sendMsg(this, (uint8 *)&inst->msg_f, inst->psduLength, delay) == DWT_ERROR) {
-            printf("error: join net request error!\n");
+            qDebug() << "error: join net request error!\n";
             inst->bcnmag.clusterFrameNum = 0xff;
             inst->fatherRef = 0xff;
             BCNLog_Clear(inst);
             return 1;
         }
 
-        printf("join net requesting[%d]-num[%d]\n", inst->bcnmag.clusterFrameNum, inst->wait4ackNum);
+        qDebug() << inst->instanceAddress16 << " join net requesting [" << inst->bcnmag.clusterFrameNum << "]-num[" << inst->wait4ackNum << "]";
 
         inst->wait4ack = DWT_RESPONSE_EXPECTED;
         inst->wait4type = UWBMAC_FRM_TYPE_CL_JOIN_CFM;
@@ -282,9 +294,9 @@ uint8 InstanceAnch::process_join_request_msg(instance_data_t* inst, event_data_t
         inst->jcofmsg.clusterSeat = seat;
         inst->jcofmsg.msgID = UWBMAC_FRM_TYPE_CL_JOIN_CFM;
 
-        printf("[%x] Req Join[%d]!\n", srcAddr16, seat);
+        qDebug() << srcAddr16 << "Req Join seat [" << seat << "]";
     } else if(inst->joinedNet > 0){
-        printf("[%x] Req Join[%d], But busy!\n", srcAddr16, seat);
+        qDebug() << srcAddr16 << "Req Join seat [" << seat << "], but busy!";
     }
     return 0;
 }
@@ -334,7 +346,7 @@ uint8 InstanceAnch::process_grp_poll_msg(uint16 srcAddr, uint8* recData, event_d
         uint32 dely = event->uTimeStamp + (inst->fixedOffsetDelay32h + (inst->idxOfAnc + 1) * inst->fixedPollDelayAnc32h) / 2500;
 
         if(coor->sendMsg(this, (uint8 *)&inst->msg_f, inst->psduLength, dely) == DWT_ERROR) {
-            printf("error:time is pass: %u\n", timeStamp32);
+            qDebug() << "error:time is pass: " << timeStamp32;
             return 1;
         }
         inst->twrmag.pollTxTime[0] = timeStamp32;
@@ -386,7 +398,7 @@ uint8 InstanceAnch::process_response_msg(uint16 srcAddr, uint8* recData, event_d
         inst->delayedTRXTime32h = event->timeStamp32h;
 
         if(coor->sendMsg(this, (uint8 *)&inst->msg_f, inst->psduLength, dely) == DWT_ERROR) {
-            printf("error:time is pass: %u\n", timeStamp32);
+            qDebug() << "error:time is pass:" << timeStamp32;
             return 1;
         }
         inst->wait4ack = DWT_RESPONSE_EXPECTED;
@@ -545,7 +557,7 @@ void InstanceAnch::rx_ok_cb(const event_data_t *cb_data) {
     if(is_knownframe == 1) {
         putevent(&dw_event, rxd_event);
     } else {
-        printf("rec unknown frame\n");
+        qDebug() << "rec unknown frame";
         //need to re-enable the rx (got unknown frame type)
         anch_handle_error_unknownframe_timeout(&dw_event);
     }
@@ -569,7 +581,7 @@ int InstanceAnch::app_run(instance_data_t *inst) {
 
         case TA_TXBCN_WAIT_SEND:
             if(ldebug)	qDebug() << "TA_TXBCN_WAIT_SEND:" << inst->instanceAddress16;
-            qDebug() << "TA_TXBCN_WAIT_SEND:" << inst->instanceAddress16;
+            //qDebug() << "TA_TXBCN_WAIT_SEND:" << inst->instanceAddress16;
             send_beacon_msg(inst, inst->bcnmag.bcnFlag);
             instDone = INST_DONE_WAIT_FOR_NEXT_EVENT;
             break;
@@ -593,16 +605,16 @@ int InstanceAnch::app_run(instance_data_t *inst) {
             instDone = INST_DONE_WAIT_FOR_NEXT_EVENT;
             inst->testAppState = TA_RXE_WAIT;
             if(inst->previousState == TA_TXBCN_WAIT_SEND) {
-                //debug_printf("txBea ok\n");
+                //qDebug() << "txBea ok";
             } else if(inst->previousState == TA_TXPOLL_WAIT_SEND) {
                 inst->twrmag.pollTxTime[0] = dw_event->timeStamp;
-                printf("txPoll ok\n");
+                qDebug() << "txPoll ok";
             } else if(inst->previousState == TA_TXFINAL_WAIT_SEND) {
-                printf("txFinal ok\n");
+                qDebug() << "txFinal ok";
             } else if(inst->previousState == TA_DOWNLOAD_REQ_WAIT_SEND) {
-                printf("txDownReq ok\n");
+                qDebug() << "txDownReq ok";
             } else if(inst->previousState == TA_DOWNLOAD_RESP_WAIT_SEND) {
-                printf("txDownResp ok\n");
+                qDebug() << "txDownResp ok";
             }
             break;
         }
@@ -641,7 +653,7 @@ int InstanceAnch::app_run(instance_data_t *inst) {
 
                     switch(msgid) {
                         case UWBMAC_FRM_TYPE_BCN:
-                            qDebug() << "rec bcn" << srcAddress16;
+                            //qDebug() << "rec bcn" << srcAddress16;
                             process_beacon_msg(inst, dw_event, srcAddress16, messageData);
                             break;
 
@@ -678,7 +690,9 @@ int InstanceAnch::app_run(instance_data_t *inst) {
                             break;
 
                         case UWBMAC_FRM_TYPE_DOWNLOAD_REQ:
-                            printf("[%d]Download type: %d, %d\n", srcAddress16, messageData[1],  *((uint16*)&messageData[2]));
+                            //printf("[%d]Download type: %d, %d\n", srcAddress16, messageData[1],  *((uint16*)&messageData[2]));
+                            qDebug() << srcAddress16 << " Download type: " << messageData[1] << (*((uint16*)&messageData[2]));
+
                             if(dw_event->typePend == DWT_SIG_TX_PENDING) {
                                 inst->testAppState = TA_TX_WAIT_CONF;
                                 inst->previousState = TA_DOWNLOAD_RESP_WAIT_SEND;

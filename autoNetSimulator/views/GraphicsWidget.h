@@ -57,6 +57,9 @@ struct Anchor{
     QAbstractGraphicsShapeItem *a;
     QAbstractGraphicsShapeItem *range;
     QGraphicsSimpleTextItem *ancLabel;
+
+    QMap<quint64, QGraphicsLineItem *> connectLines;
+
     bool show;
     QPointF pos;
 
@@ -113,6 +116,8 @@ public slots:
 
 protected slots:
     void onReady();
+
+    void netConnectFinished(quint16 src, QSet<quint16> dst, quint16 seat);
 
 protected:
     void tagHistory(quint64 tagId);

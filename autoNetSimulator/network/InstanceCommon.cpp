@@ -1,4 +1,4 @@
-#include "InstanceCommon.h"
+﻿#include "InstanceCommon.h"
 
 const uint16 rfDelays[2] = {
         (uint16) ((DWT_PRF_16M_RFDLY/ 2.0) * 1e-9 / DWT_TIME_UNITS),//PRF 16
@@ -586,9 +586,15 @@ void InstanceCommon::set_replydelay(int delayus) {
     inst->fwto4PollFrame_sy = pollframe_sy;
     inst->fwto4RespFrame_sy = respframe_sy;
     inst->fwto4FinalFrame_sy = finalframe_sy;
-    printf("gpollframe:%d, pollframe:%d, respframe:%d, finalframe:%d, tagPollRxDelay:%d, tagFinalRxDelay:%d\n", \
-            gpollframe_sy, pollframe_sy, respframe_sy, finalframe_sy, (uint32)inst->tagPollRxDelay_sy, (uint32)inst->tagFinalRxDelay_sy);
-    printf("fixedPoll:%u, fixedFinal:%u, fixedGuard:%u\n", (uint32)inst->fixedPollDelayAnc32h, (uint32)inst->fixedFinalDelayAnc32h, (uint32)inst->fixedGuardDelay32h);
+
+    qDebug() << "gpollframe:" << gpollframe_sy
+             << ", pollframe:" << pollframe_sy
+             << ", respframe:" << respframe_sy
+             << ", finalframe:" << finalframe_sy
+             << ", tagPollRxDelay:" << (uint32)inst->tagPollRxDelay_sy
+             << ", tagFinalRxDelay:" << (uint32)inst->tagFinalRxDelay_sy;
+
+    //printf("fixedPoll:%u, fixedFinal:%u, fixedGuard:%u\n", (uint32)inst->fixedPollDelayAnc32h, (uint32)inst->fixedFinalDelayAnc32h, (uint32)inst->fixedGuardDelay32h);
 
     inst->BCNfixTime32h = (convert_usec_to_devtimeu (inst->BCNslotDuration_ms * 1000) >> 8);
     inst->SVCfixTime32h = (convert_usec_to_devtimeu (inst->SVCslotDuration_ms * 1000) >> 8);

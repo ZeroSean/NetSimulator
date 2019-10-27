@@ -1,4 +1,4 @@
-#ifndef INSTANCECOMMON_H
+﻿#ifndef INSTANCECOMMON_H
 #define INSTANCECOMMON_H
 
 #include <QObject>
@@ -64,11 +64,16 @@ public:
     const double* getPos(void);
     double getRange();
 
+signals:
+    void netConnectFinished(quint16 src, QSet<quint16> dsts, quint16 seat);
+
+public:
+    QSet<quint16> connectSrcAddrs;
+
 private:
     instance_data_t instance_data[2];
 
     event_data_t dw_event_g;
-
 
     double pos[3];
     double range;
