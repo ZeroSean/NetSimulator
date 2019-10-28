@@ -34,6 +34,7 @@ struct MsgListNode{
 class Coordinator  : public QThread {
 public:
     Coordinator();
+    ~Coordinator();
 
     void push(MsgListNode *node);
     MsgListNode* pop(void);

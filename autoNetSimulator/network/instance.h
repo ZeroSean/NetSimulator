@@ -53,8 +53,10 @@
 #define TWR_FINAL_MSG_LEN		(17)	//msgID(1), flags(1), pollTxTimestamp(5), respRxTimestamp(5), finalTxTimestamp(5)
 
 //beacon data frame flag
-#define BCN_INIT	0x01
-#define BCN_EXT		0x02
+#define BCN_INIT        (0x01)
+#define BCN_EXT         (0x02)
+#define BCN_ROUTE       (0x04)
+#define BCN_GATEWAY     (0x08)
 
 /*****************************data message byte offsets*******************************/
 #define MIDOF		0	//msg id offset

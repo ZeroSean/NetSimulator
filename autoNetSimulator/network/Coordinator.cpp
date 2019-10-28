@@ -110,6 +110,10 @@ Coordinator::Coordinator() :
     portGetTickCntInit();
 }
 
+Coordinator::~Coordinator() {
+    msgListClear();
+}
+
 double distance(const double pos[3], const double pos2[3]) {
     double dpow2 = (pos[0] - pos2[0]) * (pos[0] - pos2[0])
             + (pos[1] - pos2[1]) * (pos[1] - pos2[1])
@@ -231,5 +235,8 @@ bool Coordinator::msgListEmpty() {
 }
 
 void Coordinator::msgListClear() {
-
+    while(!msgListEmpty()) {
+        MsgListNode* msg = pop();
+        delete msg;
+    }
 }

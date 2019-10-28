@@ -115,7 +115,11 @@ uint8 InstanceAnch::prepare_join_request_frame(instance_data_t* inst) {
         }
         mask <<= 1;
     }
-    if(i == inst->BCNslots_num)	return 1;
+    if(i == inst->BCNslots_num)	{
+        qDebug() << inst->instanceAddress16 << "unfound idle slot:" << inst->bcnmag.clusterNeigMap;
+        return 1;
+    }
+
     inst->msg_f.messageData[REQOF] = inst->bcnmag.clusterFrameNum;
 
     inst->psduLength = (JOIN_MSG_LEN + FRAME_CRTL_AND_ADDRESS_S + FRAME_CRC);
@@ -296,7 +300,11 @@ uint8 InstanceAnch::process_join_request_msg(instance_data_t* inst, event_data_t
 
         qDebug() << srcAddr16 << "Req Join seat [" << seat << "]";
     } else if(inst->joinedNet > 0){
-        qDebug() << srcAddr16 << "Req Join seat [" << seat << "], but busy!";
+        if(inst->jcofmsg.clusterLock != 0) {
+            qDebug() << srcAddr16 << "Req Join seat [" << seat << "], but busy:" << inst->jcofmsg.clusterLock;
+        } else if((inst->bcnmag.clusterSelfMap & mask) == 0) {
+            qDebug() << srcAddr16 << "Req Join seat [" << seat << "], but seat be ocupied!";
+        }
     }
     return 0;
 }
@@ -414,6 +422,8 @@ void InstanceAnch::anchor_init(instance_data_t* inst) {
     inst->shortAdd_idx = (inst->instanceAddress16 & 0xff);
     if(inst->instanceAddress16 == 0x0000) {
         inst->gatewayAnchor = TRUE;
+    } else {
+        inst->gatewayAnchor = FALSE;
     }
 
     config_frameheader_16bit(inst);
@@ -430,7 +440,7 @@ void InstanceAnch::anchor_init(instance_data_t* inst) {
     } else {
         inst->wait4ack = 0;
         inst->sampleNum = 0;
-        inst->fatherRef = 0;
+        inst->fatherRef = 0xff;
         inst->joinedNet = 0;
         inst->bcnmag.clusterFrameNum = 0;
         inst->bcnmag.clusterSelfMap = 0x0000;
@@ -440,6 +450,9 @@ void InstanceAnch::anchor_init(instance_data_t* inst) {
     inst->bcnmag.slotSelfMap = 0x0000;
     inst->bcnmag.nextSlotMap = 0x0000;
     inst->bcnmag.bcnFlag = 0;
+
+    inst->jcofmsg.clusterLock = 0;
+
     BCNLog_Clear(inst);
 }
 
@@ -653,7 +666,7 @@ int InstanceAnch::app_run(instance_data_t *inst) {
 
                     switch(msgid) {
                         case UWBMAC_FRM_TYPE_BCN:
-                            //qDebug() << "rec bcn" << srcAddress16;
+                            qDebug() << inst->instanceAddress16 << "rec bcn" << srcAddress16;
                             process_beacon_msg(inst, dw_event, srcAddress16, messageData);
                             break;
 

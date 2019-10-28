@@ -601,7 +601,7 @@ void GraphicsWidget::ancCommunicateRange(Anchor * anc, double x, double y, doubl
         anc->range = NULL;
     }
 
-    QAbstractGraphicsShapeItem *anch = this->_scene->addEllipse(-comRange / 2, -comRange / 2, comRange, comRange);
+    QAbstractGraphicsShapeItem *anch = this->_scene->addEllipse(-comRange, -comRange, 2 * comRange, 2 * comRange);
     anch->setPen(Qt::NoPen);
     anch->setBrush(QBrush(QColor::fromRgb(102, 171, 13, 128))); //浅绿色
     anch->setToolTip("0x" + QString::number(anc->id, 16));
@@ -679,7 +679,7 @@ void GraphicsWidget::ancConfigFileChanged() {
         clearAnchors();
 
         if(_commuRangeVal < 0.2) {
-            _commuRangeVal = 1;
+            _commuRangeVal = 0.2;
         }
 
 
@@ -735,6 +735,8 @@ void GraphicsWidget::netConnectFinished(quint16 src, QSet<quint16> dsts, quint16
 
             line->setPen(pen);
             line->setOpacity(1);
+
+            line->setZValue(10);    //绘制在最顶部
 
             anc->connectLines.insert(id, line);
         }
