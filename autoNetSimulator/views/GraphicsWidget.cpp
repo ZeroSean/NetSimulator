@@ -620,7 +620,7 @@ void GraphicsWidget::ancCommunicateRange(Anchor * anc, double x, double y, doubl
     anc->commuRange = comRange;
 }
 
-void GraphicsWidget::anchPos(quint64 anchId, double x, double y, double z, double comRange, bool show) {
+void GraphicsWidget::anchPos(quint64 anchId, double x, double y, double z, double comRange, bool show, uint8_t gateway) {
     if(_busy) {
         qDebug() << "(Widget - busy IGNORE) anch: 0x" + QString::number(anchId, 16) << " " << x << " " << y << " " << z;
     } else {
@@ -634,9 +634,18 @@ void GraphicsWidget::anchPos(quint64 anchId, double x, double y, double z, doubl
         }
 
         if(anc->a == NULL) {
-            QAbstractGraphicsShapeItem *anch = this->_scene->addEllipse(-ANC_SIZE / 2, -ANC_SIZE / 2, ANC_SIZE, ANC_SIZE);
+            QAbstractGraphicsShapeItem *anch = NULL;
+
+            if(gateway) {
+                anch = this->_scene->addEllipse(-ANC_SIZE, -ANC_SIZE, 2 * ANC_SIZE, 2 * ANC_SIZE);;
+                anch->setBrush(QBrush(QColor::fromRgb(255, 0, 0, 255)));
+            } else {
+                anch = this->_scene->addEllipse(-ANC_SIZE / 2, -ANC_SIZE / 2, ANC_SIZE, ANC_SIZE);;
+                anch->setBrush(QBrush(QColor::fromRgb(85, 60, 150, 255)));
+            }
+            anch->setZValue(5);    //绘制在最顶部
+
             anch->setPen(Qt::NoPen);
-            anch->setBrush(QBrush(QColor::fromRgb(85, 60, 150, 255)));
             anch->setToolTip("0x" + QString::number(anchId, 16));
             anc->a = anch;
         }
@@ -650,6 +659,7 @@ void GraphicsWidget::anchPos(quint64 anchId, double x, double y, double z, doubl
         anc->x = x;
         anc->y = y;
         anc->z = z;
+        anc->gateway = gateway;
 
         ancCommunicateRange(anc, x, y, z, comRange, show);
 
@@ -689,12 +699,13 @@ void GraphicsWidget::ancConfigFileChanged() {
             std::string cLine = line.toStdString();
             int id;
             double x, y, z;
-            sscanf(cLine.c_str(), "%d:(%lf, %lf, %lf)", &id, &x, &y, &z);
+            int gateway = 0;
+            sscanf(cLine.c_str(), "%d:(%lf, %lf, %lf):%d", &id, &x, &y, &z, &gateway);
 
-            anchPos(id, x, y, z, _commuRangeVal, true);
-            qDebug() << id << x << y << z;
+            anchPos(id, x, y, z, _commuRangeVal, true, gateway);
+            qDebug() << id << x << y << z << gateway;
 
-            InstanceAnch *ins = new InstanceAnch(_coor);
+            InstanceAnch *ins = new InstanceAnch(_coor, gateway);
             _coor->addAnchor(ins, id, x, y, z, _commuRangeVal, 1);
 
             QObject::connect(ins, SIGNAL(netConnectFinished(quint16,QSet<quint16>,quint16)), this, SLOT(netConnectFinished(quint16,QSet<quint16>,quint16)));

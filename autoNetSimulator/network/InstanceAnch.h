@@ -5,6 +5,7 @@
 
 #include "InstanceCommon.h"
 #include "Coordinator.h"
+#include "RouteTable.h"
 
 
 class Coordinator;
@@ -25,7 +26,7 @@ typedef struct {
 class InstanceAnch : public InstanceCommon {
     Q_OBJECT
 public:
-    explicit InstanceAnch(Coordinator *co);
+    explicit InstanceAnch(Coordinator *co, uint8_t isGateway = 0);
     //virtual ~InstanceAnch() {}
 
     int app_run(instance_data_t *inst);
@@ -54,8 +55,12 @@ public:
     void anchor_init(instance_data_t* inst);
     void anch_handle_error_unknownframe_timeout(event_data_t *dw_event);
 
+    uint8_t isGateway();
+
 private:
     PosUWBBufStr posUWBBuf;
+    RouteTable route;
+    uint8_t _isGateway;
 
 public:
     Coordinator *coor;

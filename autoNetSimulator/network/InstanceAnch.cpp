@@ -1,9 +1,15 @@
 #include "InstanceAnch.h"
 
-InstanceAnch::InstanceAnch(Coordinator *co)
+InstanceAnch::InstanceAnch(Coordinator *co, uint8_t isGateway) :
+    route(64)
 {
     coor = co;
+    _isGateway = isGateway;
     memset(&posUWBBuf, 0, sizeof(PosUWBBufStr));
+}
+
+uint8_t InstanceAnch::isGateway() {
+    return _isGateway;
 }
 
 void InstanceAnch::addTagPos_ToBuf(uint16 addr, uint8* pos, u8 alarm, uint16 elecValue, u8 seqNum) {
@@ -54,13 +60,22 @@ void InstanceAnch::anch_fill_msg_addr(instance_data_t* inst, uint16 dstaddr, uin
 }
 
 void InstanceAnch::prepare_beacon_frame(instance_data_t* inst, uint8_t flag) {
+    uint16_t offset = 0;
+    const RouteElement *element = route.getNextElement();
+
     anch_fill_msg_addr(inst, 0xffff, UWBMAC_FRM_TYPE_BCN);
     inst->msg_f.messageData[SIDOF] = inst->bcnmag.sessionID;
     inst->msg_f.messageData[FLGOF] = flag;
+
+    if(isGateway()) {
+        inst->msg_f.messageData[FLGOF] |= BCN_GATEWAY;
+    }
+
     inst->msg_f.messageData[CSNOF] = inst->bcnmag.clusterSlotNum;
     inst->msg_f.messageData[CFNOF] = inst->bcnmag.clusterFrameNum;
     inst->msg_f.messageData[CMPOF] = inst->bcnmag.clusterSelfMap & 0xff;
     inst->msg_f.messageData[CMPOF+1] = (inst->bcnmag.clusterSelfMap >> 8) & 0xff;
+    //clusterNeigMap can be deleted
     inst->msg_f.messageData[NMPOF] = inst->bcnmag.clusterNeigMap & 0xff;
     inst->msg_f.messageData[NMPOF+1] = (inst->bcnmag.clusterNeigMap >> 8) & 0xff;
 
@@ -72,15 +87,26 @@ void InstanceAnch::prepare_beacon_frame(instance_data_t* inst, uint8_t flag) {
 
     inst->msg_f.messageData[VEROF] = 0;       //(getVersionOfArea() << 4) | getVersionOfAncs();
 
+    //route table element
+    inst->msg_f.messageData[DEPTHOF] = route.getGatewayDepth();
+    inst->msg_f.messageData[DESTOF] = element->dest & 0xff;
+    inst->msg_f.messageData[DESTOF + 1] = (element->dest >> 8) & 0xff;
+    inst->msg_f.messageData[DPGAOF] = element->depth;
+    if(element->isGateway) {
+        inst->msg_f.messageData[DPGAOF] |= 0x80;
+    }
+
     inst->psduLength = 0;
+    offset = DPGAOF;
+
     if(flag & BCN_EXT) {
-        inst->msg_f.messageData[VEROF+1] = inst->jcofmsg.msgID;
-        inst->msg_f.messageData[VEROF+2] = inst->jcofmsg.chldAddr & 0xff;
-        inst->msg_f.messageData[VEROF+3] = (inst->jcofmsg.chldAddr>>8) & 0xff;
-        inst->msg_f.messageData[VEROF+4] = --inst->jcofmsg.clusterLock;
-        inst->msg_f.messageData[VEROF+5] = 0xff;
+        inst->msg_f.messageData[offset+1] = inst->jcofmsg.msgID;
+        inst->msg_f.messageData[offset+2] = inst->jcofmsg.chldAddr & 0xff;
+        inst->msg_f.messageData[offset+3] = (inst->jcofmsg.chldAddr>>8) & 0xff;
+        inst->msg_f.messageData[offset+4] = --inst->jcofmsg.clusterLock;
+        inst->msg_f.messageData[offset+5] = 0xff;
         if((inst->bcnmag.clusterSelfMap & (0x01 << inst->jcofmsg.clusterSeat)) == 0) {
-            inst->msg_f.messageData[VEROF+5] = inst->jcofmsg.clusterSeat;
+            inst->msg_f.messageData[offset+5] = inst->jcofmsg.clusterSeat;
         }
         inst->psduLength = 5;
 
@@ -91,11 +117,11 @@ void InstanceAnch::prepare_beacon_frame(instance_data_t* inst, uint8_t flag) {
     } else if(posUWBBuf.num > 0){
         if((posUWBBuf.num * ONE_POS_INFO_SIZE) == posUWBBuf.length) {
             inst->msg_f.messageData[FLGOF] |= BCN_EXT;
-            inst->msg_f.messageData[VEROF+1] = UWBMAC_FRM_TYPE_TAGS_POS;
-            inst->msg_f.messageData[VEROF+2] = inst->fatherAddr & 0xff;
-            inst->msg_f.messageData[VEROF+3] = (inst->fatherAddr>>8) & 0xff;
-            inst->msg_f.messageData[VEROF+4] = posUWBBuf.num;
-            memcpy(&(inst->msg_f.messageData[VEROF+5]), posUWBBuf.data, posUWBBuf.length);
+            inst->msg_f.messageData[offset+1] = UWBMAC_FRM_TYPE_TAGS_POS;
+            inst->msg_f.messageData[offset+2] = inst->fatherAddr & 0xff;
+            inst->msg_f.messageData[offset+3] = (inst->fatherAddr>>8) & 0xff;
+            inst->msg_f.messageData[offset+4] = posUWBBuf.num;
+            memcpy(&(inst->msg_f.messageData[offset+5]), posUWBBuf.data, posUWBBuf.length);
             inst->psduLength = posUWBBuf.length + 4;
         }
         clearTagPosBuf();
@@ -193,6 +219,11 @@ uint8 InstanceAnch::process_beacon_msg(instance_data_t* inst, event_data_t *dw_e
         }
     }
 
+    //update route table
+    addr = messageData[DESTOF] + (messageData[DESTOF+1] << 8);
+    route.update(addr, inst->instanceAddress16, (messageData[DPGAOF] & 0x7f) + 1, messageData[DPGAOF] & 0x80);
+    route.update(srcAddr16, srcAddr16, 1, messageData[FLGOF] & BCN_GATEWAY);
+
     if(inst->joinedNet > 0) {
         inst->bcnmag.clusterNeigMap |= clustermap;
         inst->bcnmag.clusterSelfMap |= (0x01 << srcClusterFraNum);
@@ -234,6 +265,7 @@ uint8 InstanceAnch::process_beacon_msg(instance_data_t* inst, event_data_t *dw_e
         inst->bcnmag.clusterNeigMap = 0;
         inst->bcnmag.sessionID = messageData[SIDOF];
         inst->wait4ackNum = 0;
+        BCNLog_Clear(inst);     //must re-sample!!!!!!!!!!!
         return 0;
     } else if(srcClusterFraNum == inst->fatherRef) {
         inst->sampleNum += 1;

@@ -37,8 +37,9 @@
 #define UWBMAC_FRM_TYPE_TWR_FINAL		(0x33)
 
 //lengths including the Message Function Code byte
-#define BCN_MSG_LEN				(11+1)	//msgID(1), sessionID(1), clusterFlag(1), slotNum(1), frameNum(1),
+#define BCN_MSG_LEN				(11+1+4)	//msgID(1), sessionID(1), clusterFlag(1), slotNum(1), frameNum(1),
                                         //clusteMap(2), neighbourClusterMap(2), data slot map(2), version(anchorss & dangerArea)
+                                        //depth(1), destAddr(2), depth&isGateway(1)
 #define SVC_MSG_LEN				(3+32)	//msgID(1), serviceCode(1), argcNum(1), 0-32 argument
 #define JOIN_MSG_LEN			(6)		//msgID(1), option(4), clusterSeat(1)
 #define JOIN_CFM_MSG_LEN		(5)		//msgID(1), address(2), clusterLock(1), clusterSeat(1), a part of extended beacon msg
@@ -56,7 +57,7 @@
 #define BCN_INIT        (0x01)
 #define BCN_EXT         (0x02)
 #define BCN_ROUTE       (0x04)
-#define BCN_GATEWAY     (0x08)
+#define BCN_GATEWAY     (0x80)
 
 /*****************************data message byte offsets*******************************/
 #define MIDOF		0	//msg id offset
@@ -69,6 +70,10 @@
 #define NMPOF		7	//neighbour cluster map offset
 #define SMPOF		9	//data slot map offset
 #define VEROF		11	//version of anchors and danger area
+
+#define DEPTHOF     12  //gateway depth
+#define DESTOF      13  //route dest addr
+#define DPGAOF      15  //route depth to dest addr and flag bit of gateway
 
 //request join msg bytes offsets
 #define REQOF		5	//requsting cluster seat offset

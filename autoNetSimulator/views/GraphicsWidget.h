@@ -52,6 +52,7 @@ struct Anchor{
         y = 0;
         z = 0;
         commuRange = 5;
+        gateway = 0;
     }
     quint64 id;
     QAbstractGraphicsShapeItem *a;
@@ -67,6 +68,7 @@ struct Anchor{
     double y;
     double z;
     double commuRange;
+    uint8_t gateway;
 };
 
 class GraphicsWidget : public QWidget {
@@ -101,7 +103,7 @@ public slots:
     void tagPos(quint64 tagId, double x, double y, double z);
     void tagStats(quint64 tagId, double x, double y, double z, double r95);
     void tagRange(quint64 tagId, quint64 aId, double range);
-    void anchPos(quint64 anchId, double x, double y, double z, double comRange, bool show);
+    void anchPos(quint64 anchId, double x, double y, double z, double comRange, bool show, uint8_t gateway = 0);
     void ancCommunicateRange(Anchor * anc, double x, double y, double z, double comRange, bool show);
 
     void clearTags(void);
