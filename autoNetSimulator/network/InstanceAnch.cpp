@@ -12,6 +12,14 @@ uint8_t InstanceAnch::isGateway() {
     return _isGateway;
 }
 
+int InstanceAnch::getRouteOutPort(uint16_t dest) {
+    return this->route.getOutPort(dest);
+}
+
+QString InstanceAnch::routeToString() {
+    return this->route.toString();
+}
+
 void InstanceAnch::addTagPos_ToBuf(uint16 addr, uint8* pos, u8 alarm, uint16 elecValue, u8 seqNum) {
     uint16 offset = posUWBBuf.length;
     if((offset + ONE_POS_INFO_SIZE) > POS_UWB_BUF_MAX_SIZE)	return;
@@ -221,7 +229,9 @@ uint8 InstanceAnch::process_beacon_msg(instance_data_t* inst, event_data_t *dw_e
 
     //update route table
     addr = messageData[DESTOF] + (messageData[DESTOF+1] << 8);
-    route.update(addr, inst->instanceAddress16, (messageData[DPGAOF] & 0x7f) + 1, messageData[DPGAOF] & 0x80);
+    if(addr != inst->instanceAddress16) {
+        route.update(addr, srcAddr16, (messageData[DPGAOF] & 0x7f) + 1, messageData[DPGAOF] & 0x80);
+    }
     route.update(srcAddr16, srcAddr16, 1, messageData[FLGOF] & BCN_GATEWAY);
 
     if(inst->joinedNet > 0) {
@@ -698,7 +708,7 @@ int InstanceAnch::app_run(instance_data_t *inst) {
 
                     switch(msgid) {
                         case UWBMAC_FRM_TYPE_BCN:
-                            qDebug() << inst->instanceAddress16 << "rec bcn" << srcAddress16;
+                            //qDebug() << inst->instanceAddress16 << "rec bcn" << srcAddress16;
                             process_beacon_msg(inst, dw_event, srcAddress16, messageData);
                             break;
 

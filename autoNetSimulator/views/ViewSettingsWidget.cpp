@@ -6,6 +6,7 @@
 #include "ViewSettings.h"
 #include "OriginTool.h"
 #include "ScaleTool.h"
+#include "TagTool.h"
 #include "GraphicsView.h"
 #include "GraphicsWidget.h"
 
@@ -49,6 +50,14 @@ ViewSettingsWidget::ViewSettingsWidget(QWidget *parent) :
 
     QObject::connect(ui->scaleX_pb, SIGNAL(clicked(bool)), this, SLOT(scaleClicked()));
 
+    QObject::connect(ui->showRouteTable, SIGNAL(clicked(bool)), this, SLOT(showRouteTableClicked()));
+    QObject::connect(ui->startAncAddr_sb, SIGNAL(editingFinished()), this, SLOT(routePathChanged()));
+    QObject::connect(ui->startAncAddr_sb, SIGNAL(valueChanged(int)), this, SLOT(routePathChanged()));
+    QObject::connect(ui->endAncAddr_sb, SIGNAL(editingFinished()), this, SLOT(routePathChanged()));
+    QObject::connect(ui->endAncAddr_sb, SIGNAL(valueChanged(int)), this, SLOT(routePathChanged()));
+
+    QObject::connect(ui->tagConfig_pb, SIGNAL(clicked(bool)), this, SLOT(tagConfigClicked()));
+
     _logging = false;
 
     ui->label_logfile->setText("");
@@ -59,6 +68,8 @@ ViewSettingsWidget::ViewSettingsWidget(QWidget *parent) :
         ui->logging_pb->setText("Start");
         ui->label_logingstatus->setText("Logging disabled.");
     }
+
+
 
     DisplayApplication::connectReady(this, "onReady()");
 }
@@ -85,11 +96,20 @@ void ViewSettingsWidget::onReady() {
     QObject::connect(ui->gridShow, SIGNAL(clicked(bool)), mapper, SLOT(submit()));
     QObject::connect(ui->showOrigin, SIGNAL(clicked(bool)), mapper, SLOT(submit()));
 
-    ui->showTagHistory->setChecked(true);
+    ui->showTagHistory->setChecked(false);
     ui->tabWidget->setCurrentIndex(0);
+
+    ui->showRouteTable->setChecked(false);
+    ui->startAncAddr_sb->setDisabled(true);
+    ui->startAncLable->setDisabled(true);
+    ui->endAncAddr_sb->setDisabled(true);
+    ui->endAncLable->setDisabled(true);
 
     DisplayApplication::graphicsWidget()->communicateRangeValue(ui->communicateRange->value());
     DisplayApplication::graphicsWidget()->zone2Value(ui->zone2->value());
+    DisplayApplication::graphicsWidget()->setShowTagHistory(ui->showTagHistory->isChecked());
+
+    QObject::connect(DisplayApplication::graphicsWidget(), SIGNAL(routeMsgShow(QString)), this, SLOT(routeMsgShow(QString)));
 }
 
 ViewSettingsWidget::~ViewSettingsWidget() {
@@ -255,7 +275,46 @@ void ViewSettingsWidget::scaleClicked() {
     DisplayApplication::graphicsView()->setTool(tool);
 }
 
+void ViewSettingsWidget::showRouteTableClicked() {
+    if(ui->showRouteTable->isChecked()) {
+        ui->showRouteTable->setChecked(true);
+        ui->startAncAddr_sb->setEnabled(true);
+        ui->startAncLable->setEnabled(true);
+        ui->endAncAddr_sb->setEnabled(true);
+        ui->endAncLable->setEnabled(true);
+    } else {
+        ui->showRouteTable->setChecked(false);
+        ui->startAncAddr_sb->setDisabled(true);
+        ui->startAncLable->setDisabled(true);
+        ui->endAncAddr_sb->setDisabled(true);
+        ui->endAncLable->setDisabled(true);
+    }
 
+    routePathChanged();
+}
+
+void ViewSettingsWidget::routePathChanged() {
+    ui->routeTableBrowser->setText("");
+    DisplayApplication::graphicsWidget()->drawRoutePath(ui->startAncAddr_sb->value(),
+                                                        ui->endAncAddr_sb->value(),
+                                                        ui->showRouteTable->isChecked());
+}
+
+void ViewSettingsWidget::routeMsgShow(QString msg) {
+    ui->routeTableBrowser->setText(msg);
+}
+
+void ViewSettingsWidget::tagConfigClicked() {
+    TagTool *tool = new TagTool(this);
+
+    ui->showRouteTable->setChecked(false);
+    showRouteTableClicked();
+    ui->showTagHistory->setChecked(false);
+    tagHistoryShowClicked();
+
+    QObject::connect(tool, SIGNAL(done(bool)), tool, SLOT(deleteLater()));
+    DisplayApplication::graphicsView()->setTool(tool);
+}
 
 
 

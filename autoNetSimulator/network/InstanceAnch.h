@@ -57,6 +57,9 @@ public:
 
     uint8_t isGateway();
 
+    int getRouteOutPort(uint16_t dest);
+    QString routeToString();
+
 private:
     PosUWBBufStr posUWBBuf;
     RouteTable route;

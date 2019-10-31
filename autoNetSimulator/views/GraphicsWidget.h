@@ -60,6 +60,7 @@ struct Anchor{
     QGraphicsSimpleTextItem *ancLabel;
 
     QMap<quint64, QGraphicsLineItem *> connectLines;
+    QMap<quint64, QGraphicsLineItem *> allLines;
 
     bool show;
     QPointF pos;
@@ -88,6 +89,8 @@ public:
     void insertTag(int id, QString &t, bool showR95, bool showLable, QString &lable);
     void tagIDToString(quint64 tagId, QString *t);
 
+    QGraphicsLineItem * addNewLine(Anchor *anc1, Anchor *anc2);
+
 signals:
     void updateAnchorXYZ(int id, int x, double value);
     void updateTagCorrection(int aid, int tid, int value);
@@ -96,6 +99,8 @@ signals:
     void centerRect(const QRectF &visibleRect);
 
     void setTagHistory(int h);
+
+    void routeMsgShow(QString msg);
 
 public slots:
     void centerOnAnchor(void);
@@ -115,6 +120,11 @@ public slots:
     void tagHistoryNumber(int value);
 
     void ancConfigFileChanged();
+
+    void tagConfigChanged(double x, double y);
+
+    void drawRoutePath(uint16_t start, uint16_t end, bool show);
+    void drawRoutePathFromTag(uint16_t tagId, uint16_t start, uint16_t end, bool show);
 
 protected slots:
     void onReady();
@@ -144,6 +154,8 @@ private:
     Coordinator *_coor;
     QMap<quint64, InstanceAnch*> _insAnchors;
 
+
+    QSet<QGraphicsLineItem *> _routePath;
 };
 
 #endif // GRAPHICSWIDGET_H

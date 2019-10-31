@@ -1,0 +1,32 @@
+#include "TagTool.h"
+
+#include "ViewSettings.h"
+#include "DisplayApplication.h"
+#include "GraphicsView.h"
+#include "GraphicsWidget.h"
+
+#include <QCursor>
+#include <QDebug>
+
+TagTool::TagTool(QObject *parent) :
+    AbstractTool(parent)
+{
+}
+
+QCursor TagTool::cursor()
+{
+    return Qt::CrossCursor;
+}
+
+void TagTool::clicked(const QPointF &scenePos)
+{
+    ViewSettings *vs = DisplayApplication::viewSettings();
+    QPointF b = vs->floorplanTransform().inverted().map(scenePos);
+
+    //qDebug() << b.x() << b.y();
+
+    DisplayApplication::graphicsWidget()->tagConfigChanged(b.x(), b.y());
+
+    emit done();
+}
+

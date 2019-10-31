@@ -49,6 +49,12 @@ protected slots:
     void setTagHistory(int h);
     void loggingClicked(void);
 
+    void tagConfigClicked(void);
+
+    void showRouteTableClicked();
+    void routePathChanged();
+    void routeMsgShow(QString msg);
+
 private:
     Ui::ViewSettingsWidget *ui;
 

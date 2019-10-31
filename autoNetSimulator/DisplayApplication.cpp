@@ -3,6 +3,7 @@
 #include "mainwindow.h"
 #include "ViewSettings.h"
 #include "GraphicsWidget.h"
+#include "ViewSettingsWidget.h"
 
 #include <QMetaProperty>
 #include <QDesktopWidget>
@@ -51,6 +52,10 @@ ViewSettings *DisplayApplication::viewSettings() {
 
 GraphicsWidget *DisplayApplication::graphicsWidget() {
     return mainWindow()->graphicsWidget();
+}
+
+ViewSettingsWidget *DisplayApplication::viewSettingsWidget() {
+    return mainWindow()->viewSettingsWidget();
 }
 
 GraphicsView *DisplayApplication::graphicsView() {

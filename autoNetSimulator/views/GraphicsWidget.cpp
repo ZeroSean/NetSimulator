@@ -3,6 +3,7 @@
 
 #include "DisplayApplication.h"
 #include "ViewSettings.h"
+#include "ViewSettingsWidget.h"
 
 #include <QDomDocument>
 #include <QGraphicsScene>
@@ -37,7 +38,7 @@ GraphicsWidget::GraphicsWidget(QWidget *parent) :
     ui->graphicsView->setBaseSize(desktopHeight, desktopWidth);
 
     _historyLength = 20;
-    _showHistory = _showHistoryP = true;
+    _showHistory = _showHistoryP = false;
     _busy = true;
     _ignore = true;
     _tagSize = 0.15;
@@ -196,6 +197,8 @@ void GraphicsWidget::clearTags() {
 }
 
 void GraphicsWidget::clearAnchors() {
+    drawRoutePath(0, 0, false);     //clear all routh path lines
+
     QMap<quint64, Anchor*>::iterator i = _anchors.begin();
     while(i != _anchors.end()) {
         //quint64 ancId = i.key();
@@ -229,6 +232,8 @@ void GraphicsWidget::clearAnchors() {
                 }
                 anc->connectLines.clear();
             }
+
+            anc->allLines.clear();
         }
         delete(anc);
         *i = NULL;
@@ -266,7 +271,6 @@ void GraphicsWidget::insertAnchor(int id, double x, double y, double z, int *arr
 }
 
 void GraphicsWidget::addNewTag(quint64 tagId) {
-    static double c_h = 0.1;
     Tag *tag = NULL;
     int tid = tagId;
     QString tagLabel = QString("Tag %1").arg(tid);
@@ -276,52 +280,29 @@ void GraphicsWidget::addNewTag(quint64 tagId) {
     _tags.insert(tagId, new(Tag));
     tag = this->_tags.value(tagId, NULL);
     if(tag) {
+        tag->id = tagId;
         tag->p.resize(_historyLength);
 
-        c_h += 0.568034;
-        if(c_h >= 1) {
-            c_h -= 1;
-        }
-        tag->colourH = c_h;
-        tag->colourS = 0.55;
-        tag->colourV = 0.98;
-        tag->tsPrev = 0;
-        tag->r95Show = false;
         tag->showLabel = (tagLabel != NULL) ? true : false;
         tag->tagLabelStr = tagLabel;
+        tag->tagLabel = new QGraphicsSimpleTextItem(NULL);
+        tag->tagLabel->setFlag(QGraphicsItem::ItemIgnoresTransformations);
+        tag->tagLabel->setZValue(1);
+        tag->tagLabel->setText(tagLabel);
+        tag->tagLabel->setOpacity(0);
 
-        tag->r95p = this->_scene->addEllipse(0.1, 0.1, 0, 0);
-        tag->r95p->setOpacity(0);
-        tag->r95p->setPen(Qt::NoPen);
-        tag->r95p->setBrush(Qt::NoBrush);
 
-        tag->avgp = this->_scene->addEllipse(0, 0, 0, 0);
-        tag->avgp->setOpacity(0);
-        tag->avgp->setPen(Qt::NoPen);
-        tag->avgp->setBrush(Qt::NoBrush);
+        QPen pen = QPen(Qt::blue);
+        pen.setStyle(Qt::SolidLine);
+        pen.setWidthF(PEN_WIDTH);
+        tag->tagLabel->setPen(pen);
 
-        {
-            QPen pen = QPen(Qt::blue);
+        QFont font = tag->tagLabel->font();
+        font.setPointSize(FONT_SIZE);
+        font.setWeight(QFont::Normal);
+        tag->tagLabel->setFont(font);
 
-            tag->tagLabel = new QGraphicsSimpleTextItem(NULL);
-            tag->tagLabel->setFlag(QGraphicsItem::ItemIgnoresTransformations);
-            tag->tagLabel->setZValue(1);
-            tag->tagLabel->setText(tagLabel);
-            tag->tagLabel->setOpacity(0);
-
-            QFont font = tag->tagLabel->font();
-            font.setPointSize(FONT_SIZE);
-            font.setWeight(QFont::Normal);
-
-            tag->tagLabel->setFont(font);
-
-            pen.setStyle(Qt::SolidLine);
-            pen.setWidthF(PEN_WIDTH);
-
-            tag->tagLabel->setPen(pen);
-
-            this->_scene->addItem(tag->tagLabel);
-        }
+        this->_scene->addItem(tag->tagLabel);
     }
 }
 
@@ -331,10 +312,8 @@ void GraphicsWidget::tagPos(quint64 tagId, double x, double y, double z) {
         qDebug() << "(Widget - busy IGNORE) Tag: 0x" + QString::number(tagId, 16) << " " << x << " " << y << " " << z;
     } else {
         Tag *tag = NULL;
-        QString t;
 
         _busy = true;
-        tagIDToString(tagId, &t);
 
         tag = _tags.value(tagId, NULL);
         if(!tag) {
@@ -351,18 +330,17 @@ void GraphicsWidget::tagPos(quint64 tagId, double x, double y, double z) {
             if(tag->idx > 0) {
                 tag_pt->setBrush(tag->p[0]->brush());
             } else {
-                QBrush b = QBrush(QColor::fromHsvF(tag->colourH, tag->colourS, tag->colourV));
+                QBrush b = QBrush(Qt::black);
                 QPen pen = QPen(b.color().darker());
                 pen.setStyle(Qt::SolidLine);
                 pen.setWidthF(PEN_WIDTH);
 
                 tag_pt->setBrush(b.color().dark());
-                tag->avgp->setBrush(b.color().darker());
                 tag->tagLabel->setBrush(b.color().dark());
                 tag->tagLabel->setPen(pen);
             }
 
-            tag_pt->setToolTip(t);
+            tag_pt->setToolTip("0x" + QString::number(tagId, 16));
         }
 
         _ignore = true;
@@ -572,6 +550,7 @@ void GraphicsWidget::addNewAnchor(quint64 ancId, bool show) {
     anc = this->_anchors.value(ancId, NULL);
     anc->a = NULL;
     anc->range = NULL;
+    anc->id = ancId;
 
     {
         anc->ancLabel = new QGraphicsSimpleTextItem(NULL);
@@ -708,11 +687,36 @@ void GraphicsWidget::ancConfigFileChanged() {
             InstanceAnch *ins = new InstanceAnch(_coor, gateway);
             _coor->addAnchor(ins, id, x, y, z, _commuRangeVal, 1);
 
-            QObject::connect(ins, SIGNAL(netConnectFinished(quint16,QSet<quint16>,quint16)), this, SLOT(netConnectFinished(quint16,QSet<quint16>,quint16)));
+            _insAnchors.insert(id, ins);
+
+            QObject::connect(ins, SIGNAL(netConnectFinished(quint16,QSet<quint16>,quint16)),
+                             this, SLOT(netConnectFinished(quint16,QSet<quint16>,quint16)));
         }
 
         _coor->start();
     }
+}
+
+QGraphicsLineItem * GraphicsWidget::addNewLine(Anchor *anc1, Anchor *anc2) {
+
+    if(anc1 != NULL && anc2 != NULL) {
+        QGraphicsLineItem *line = this->_scene->addLine(anc1->x, anc1->y, anc2->x, anc2->y);
+        QPen pen = QPen(QBrush(Qt::red), 0.005);
+        pen.setStyle(Qt::SolidLine);
+        pen.setWidthF(0.03);
+
+        line->setPen(pen);
+        line->setOpacity(1);
+
+        line->setZValue(10);    //绘制在最顶部
+
+        anc1->connectLines.insert(anc2->id, line);
+        anc1->allLines.insert(anc2->id, line);
+        anc2->allLines.insert(anc1->id, line);
+
+        return line;
+    }
+    return NULL;
 }
 
 void GraphicsWidget::netConnectFinished(quint16 src, QSet<quint16> dsts, quint16 seat) {
@@ -739,17 +743,7 @@ void GraphicsWidget::netConnectFinished(quint16 src, QSet<quint16> dsts, quint16
         Anchor *dstAnc = _anchors.value(id, NULL);
 
         if(dstAnc) {
-            QGraphicsLineItem *line = this->_scene->addLine(anc->x, anc->y, dstAnc->x, dstAnc->y);
-            QPen pen = QPen(QBrush(Qt::red), 0.005);
-            pen.setStyle(Qt::SolidLine);
-            pen.setWidthF(0.03);
-
-            line->setPen(pen);
-            line->setOpacity(1);
-
-            line->setZValue(10);    //绘制在最顶部
-
-            anc->connectLines.insert(id, line);
+            addNewLine(anc, dstAnc);
         }
     }
 
@@ -758,5 +752,80 @@ void GraphicsWidget::netConnectFinished(quint16 src, QSet<quint16> dsts, quint16
     _busy = false;
 }
 
+void GraphicsWidget::drawRoutePath(uint16_t start, uint16_t end, bool show) {
+    for(QGraphicsLineItem *line : _routePath) {
+        QPen pen = QPen(QBrush(Qt::red), 0.005);
+        pen.setStyle(Qt::SolidLine);
+        pen.setWidthF(0.03);
+        line->setPen(pen);
+    }
+    _routePath.clear();
 
+    if(show) {
+        uint16_t pre = start;
+        int error = 0;
+        QString info = "out--len--dest\n";
+
+        while(pre != end) {
+            InstanceAnch *anch = _insAnchors.value(pre, NULL);
+            Anchor *startAnc = _anchors.value(pre, NULL);
+
+            if(anch == NULL || startAnc == NULL) {
+                error = 1;
+                emit routeMsgShow("cant find anchor:" + QString::number(pre));
+                break;
+            }
+
+            int next = anch->getRouteOutPort(end);
+            if(next == -1) {
+                emit routeMsgShow("cant find out port in route table:" + QString::number(pre));
+                error = 2;
+                break;
+            }
+
+            QGraphicsLineItem *line = startAnc->allLines.value(next, NULL);
+            if(line == NULL) {
+                line = addNewLine(startAnc, _anchors.value(next, NULL));
+
+                if(line == NULL) {
+                    emit routeMsgShow("cant find line:" + QString::number(pre) + "--->" + QString::number(next));
+                    error = 3;
+                    break;
+                }
+            }
+
+            info += "Anchor: " + QString::number(pre) + "\n";
+            info += anch->routeToString() + "\n";
+
+            _routePath.insert(line);
+            pre = next;
+        }
+
+        if(error == 0) {
+            QPen pen = QPen(QBrush(Qt::darkRed), 0.005);
+            pen.setStyle(Qt::DotLine);
+            pen.setWidthF(0.05);
+
+            for(QGraphicsLineItem *line : _routePath) {
+                line->setPen(pen);
+            }
+
+            emit routeMsgShow(info);
+        } else {
+            _routePath.clear();
+        }
+    }
+}
+
+
+//onlu one tag of id[0x8001] be used to draw route path
+void GraphicsWidget::tagConfigChanged(double x, double y) {
+    tagPos(0x8001, x, y, 0);
+}
+
+void GraphicsWidget::drawRoutePathFromTag(uint16_t tagId, uint16_t start, uint16_t end, bool show) {
+    Tag *tag = _tags.value(tagId, NULL);
+
+    drawRoutePath(start, end, show);
+}
 

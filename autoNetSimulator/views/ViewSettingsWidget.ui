@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>329</width>
+    <width>318</width>
     <height>578</height>
    </rect>
   </property>
@@ -135,9 +135,9 @@
       <widget class="QPushButton" name="logging_pb">
        <property name="geometry">
         <rect>
-         <x>120</x>
+         <x>140</x>
          <y>100</y>
-         <width>111</width>
+         <width>91</width>
          <height>23</height>
         </rect>
        </property>
@@ -202,7 +202,7 @@
         <rect>
          <x>10</x>
          <y>240</y>
-         <width>87</width>
+         <width>91</width>
          <height>23</height>
         </rect>
        </property>
@@ -219,16 +219,16 @@
         </size>
        </property>
        <property name="text">
-        <string>Select</string>
+        <string>Select File</string>
        </property>
       </widget>
-      <widget class="QTextBrowser" name="textBrowser">
+      <widget class="QTextBrowser" name="routeTableBrowser">
        <property name="geometry">
         <rect>
          <x>10</x>
          <y>330</y>
-         <width>281</width>
-         <height>191</height>
+         <width>271</width>
+         <height>201</height>
         </rect>
        </property>
        <property name="html">
@@ -239,7 +239,7 @@ p, li { white-space: pre-wrap; }
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;route table:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
       </widget>
-      <widget class="QCheckBox" name="showTagHistory_2">
+      <widget class="QCheckBox" name="showRouteTable">
        <property name="geometry">
         <rect>
          <x>10</x>
@@ -261,11 +261,14 @@ p, li { white-space: pre-wrap; }
          <height>22</height>
         </rect>
        </property>
+       <property name="inputMethodHints">
+        <set>Qt::ImhDigitsOnly</set>
+       </property>
        <property name="minimum">
-        <number>1</number>
+        <number>0</number>
        </property>
        <property name="maximum">
-        <number>128</number>
+        <number>65535</number>
        </property>
        <property name="value">
         <number>20</number>
@@ -287,7 +290,7 @@ p, li { white-space: pre-wrap; }
       <widget class="QLabel" name="endAncLable">
        <property name="geometry">
         <rect>
-         <x>130</x>
+         <x>110</x>
          <y>300</y>
          <width>31</width>
          <height>20</height>
@@ -300,20 +303,48 @@ p, li { white-space: pre-wrap; }
       <widget class="QSpinBox" name="endAncAddr_sb">
        <property name="geometry">
         <rect>
-         <x>160</x>
+         <x>140</x>
          <y>300</y>
          <width>51</width>
          <height>22</height>
         </rect>
        </property>
+       <property name="inputMethodHints">
+        <set>Qt::ImhDigitsOnly</set>
+       </property>
        <property name="minimum">
-        <number>1</number>
+        <number>0</number>
        </property>
        <property name="maximum">
-        <number>128</number>
+        <number>65535</number>
        </property>
        <property name="value">
         <number>20</number>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="tagConfig_pb">
+       <property name="geometry">
+        <rect>
+         <x>140</x>
+         <y>240</y>
+         <width>91</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>Set Tag</string>
        </property>
       </widget>
      </widget>

@@ -31,6 +31,7 @@ public:
     void update(uint16_t dest, uint16_t out, uint8_t depth, uint8_t isGateway);
     const RouteElement * cfind(uint16_t dest);
     const RouteElement * at(uint16_t index);
+    int getOutPort(uint16_t dest);
 
     const RouteElement * getNextElement();
 
@@ -38,6 +39,8 @@ public:
     uint8_t  getGatewayDepth();
     uint16_t getGatewayAddr();
     uint16_t getGatewayOut();
+
+    QString toString(int dest = -1);
 
 private:
     RouteElement * find(uint16_t dest);

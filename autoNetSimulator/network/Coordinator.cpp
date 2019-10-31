@@ -157,7 +157,7 @@ void Coordinator::run() {
             MsgListNode *msg = pop();
             uint64 srcID = msg->instance->address();
 
-            qDebug() << "msg instance:" << msg->instance->address();
+            //qDebug() << "msg instance:" << msg->instance->address();
 
             //循环运行每个节点的接收成功中断函数和发送节点的发送成功函数
             for(InstanceCommon* instance : inRangeInstances[srcID]) {

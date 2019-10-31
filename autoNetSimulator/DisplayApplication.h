@@ -10,6 +10,7 @@ class MainWindow;
 class ViewSettings;
 class GraphicsWidget;
 class GraphicsView;
+class ViewSettingsWidget;
 
 
 /**
@@ -24,6 +25,7 @@ public:
 
     static DisplayApplication *instance();
     static ViewSettings *viewSettings();
+    static ViewSettingsWidget *viewSettingsWidget();
 
     static MainWindow *mainWindow();
 

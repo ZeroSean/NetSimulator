@@ -108,6 +108,15 @@ const RouteElement * RouteTable::cfind(uint16_t dest) {
     return this->find(dest);
 }
 
+int RouteTable::getOutPort(uint16_t dest) {
+    RouteElement * element = this->find(dest);
+    if(element) {
+        return element->out;
+    } else {
+        return -1;
+    }
+}
+
 const RouteElement * RouteTable::at(uint16_t index) {
     if(index < _size) {
         return &_table[index];
@@ -138,4 +147,19 @@ const RouteElement * RouteTable::getNextElement() {
     } else {
         return &_uploadGateway;
     }
+}
+
+QString RouteTable::toString(int dest) {
+    QString s = "";
+
+    if(dest >= 0) {
+        RouteElement *element = find(dest);
+
+        s += QString::number(element->out) + "---[" + QString::number(element->depth) + "]---"+ QString::number(element->dest) + "\n";
+    } else {
+        for(int i = 0; i < _size; ++i) {
+            s += QString::number(_table[i].out) + "---[" + QString::number(_table[i].depth) + "]---"+ QString::number(_table[i].dest) + "\n";
+        }
+    }
+    return s;
 }
