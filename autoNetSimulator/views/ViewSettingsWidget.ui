@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>318</width>
+    <width>322</width>
     <height>578</height>
    </rect>
   </property>
@@ -34,7 +34,7 @@
         <rect>
          <x>10</x>
          <y>160</y>
-         <width>109</width>
+         <width>151</width>
          <height>17</height>
         </rect>
        </property>
@@ -45,7 +45,7 @@
       <widget class="QDoubleSpinBox" name="communicateRange">
        <property name="geometry">
         <rect>
-         <x>90</x>
+         <x>130</x>
          <y>10</y>
          <width>62</width>
          <height>22</height>
@@ -61,7 +61,7 @@
       <widget class="QDoubleSpinBox" name="zone2">
        <property name="geometry">
         <rect>
-         <x>90</x>
+         <x>130</x>
          <y>40</y>
          <width>62</width>
          <height>22</height>
@@ -79,7 +79,7 @@
         <rect>
          <x>10</x>
          <y>10</y>
-         <width>71</width>
+         <width>111</width>
          <height>20</height>
         </rect>
        </property>
@@ -92,7 +92,7 @@
         <rect>
          <x>10</x>
          <y>40</y>
-         <width>61</width>
+         <width>111</width>
          <height>20</height>
         </rect>
        </property>
@@ -103,9 +103,9 @@
       <widget class="QSpinBox" name="tagHistoryN">
        <property name="geometry">
         <rect>
-         <x>130</x>
+         <x>180</x>
          <y>160</y>
-         <width>51</width>
+         <width>61</width>
          <height>22</height>
         </rect>
        </property>
@@ -137,7 +137,7 @@
         <rect>
          <x>140</x>
          <y>100</y>
-         <width>91</width>
+         <width>111</width>
          <height>23</height>
         </rect>
        </property>
@@ -189,7 +189,7 @@
         <rect>
          <x>10</x>
          <y>220</y>
-         <width>291</width>
+         <width>281</width>
          <height>16</height>
         </rect>
        </property>
@@ -202,7 +202,7 @@
         <rect>
          <x>10</x>
          <y>240</y>
-         <width>91</width>
+         <width>111</width>
          <height>23</height>
         </rect>
        </property>
@@ -244,7 +244,7 @@ p, li { white-space: pre-wrap; }
         <rect>
          <x>10</x>
          <y>280</y>
-         <width>121</width>
+         <width>201</width>
          <height>17</height>
         </rect>
        </property>
@@ -255,7 +255,7 @@ p, li { white-space: pre-wrap; }
       <widget class="QSpinBox" name="startAncAddr_sb">
        <property name="geometry">
         <rect>
-         <x>50</x>
+         <x>70</x>
          <y>300</y>
          <width>51</width>
          <height>22</height>
@@ -279,7 +279,7 @@ p, li { white-space: pre-wrap; }
         <rect>
          <x>10</x>
          <y>300</y>
-         <width>41</width>
+         <width>51</width>
          <height>20</height>
         </rect>
        </property>
@@ -290,9 +290,9 @@ p, li { white-space: pre-wrap; }
       <widget class="QLabel" name="endAncLable">
        <property name="geometry">
         <rect>
-         <x>110</x>
+         <x>160</x>
          <y>300</y>
-         <width>31</width>
+         <width>41</width>
          <height>20</height>
         </rect>
        </property>
@@ -303,7 +303,7 @@ p, li { white-space: pre-wrap; }
       <widget class="QSpinBox" name="endAncAddr_sb">
        <property name="geometry">
         <rect>
-         <x>140</x>
+         <x>200</x>
          <y>300</y>
          <width>51</width>
          <height>22</height>
@@ -327,7 +327,7 @@ p, li { white-space: pre-wrap; }
         <rect>
          <x>140</x>
          <y>240</y>
-         <width>91</width>
+         <width>111</width>
          <height>23</height>
         </rect>
        </property>
@@ -569,7 +569,7 @@ p, li { white-space: pre-wrap; }
         <rect>
          <x>10</x>
          <y>10</y>
-         <width>143</width>
+         <width>178</width>
          <height>111</height>
         </rect>
        </property>
