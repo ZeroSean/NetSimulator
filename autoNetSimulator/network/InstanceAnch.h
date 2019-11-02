@@ -57,6 +57,8 @@ public:
 
     uint8_t isGateway();
 
+    int getGatewayOutPort();
+    int getGatewayDstAddr();
     int getRouteOutPort(uint16_t dest);
     QString routeToString();
 

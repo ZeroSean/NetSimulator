@@ -9,7 +9,8 @@
 #include <QDebug>
 
 TagTool::TagTool(QObject *parent) :
-    AbstractTool(parent)
+    AbstractTool(parent),
+    _state(NoClicked)
 {
 }
 
@@ -18,14 +19,32 @@ QCursor TagTool::cursor()
     return Qt::CrossCursor;
 }
 
-void TagTool::clicked(const QPointF &scenePos)
-{
+void TagTool::updatePosition(const QPointF &scenePos) {
     ViewSettings *vs = DisplayApplication::viewSettings();
     QPointF b = vs->floorplanTransform().inverted().map(scenePos);
 
     //qDebug() << b.x() << b.y();
 
     DisplayApplication::graphicsWidget()->tagConfigChanged(b.x(), b.y());
+}
+
+void TagTool::clicked(const QPointF &scenePos)
+{
+    updatePosition(scenePos);
+    _state = Clicked;
+}
+
+void TagTool::draw(QPainter *painter, const QRectF &rect, const QPointF &cursor) {
+    Q_UNUSED(painter)
+    Q_UNUSED(rect)
+
+    if(_state == Clicked) {
+        updatePosition(cursor);
+    }
+}
+
+void TagTool::cancel() {
+    _state = NoClicked;
 
     emit done();
 }

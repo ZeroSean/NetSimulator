@@ -31,7 +31,13 @@ SOURCES += main.cpp \
     views/GraphicsView.cpp \
     views/GraphicsWidget.cpp \
     views/MinimapView.cpp \
-    views/ViewSettingsWidget.cpp
+    views/ViewSettingsWidget.cpp \
+    network/Coordinator.cpp \
+    network/InstanceAnch.cpp \
+    network/InstanceCommon.cpp \
+    network/InstanceTag.cpp \
+    tools/TagTool.cpp \
+    network/RouteTable.cpp
 
 HEADERS  += \
     views/mainwindow.h \
@@ -45,7 +51,15 @@ HEADERS  += \
     views/GraphicsView.h \
     views/GraphicsWidget.h \
     views/MinimapView.h \
-    views/ViewSettingsWidget.h
+    views/ViewSettingsWidget.h \
+    network/Coordinator.h \
+    network/decadeviceapi.h \
+    network/instance.h \
+    network/InstanceAnch.h \
+    network/InstanceCommon.h \
+    network/RouteTable.h \
+    tools/TagTool.h \
+    network/InstanceTag.h
 
 FORMS    += \
     views/mainwindow.ui \

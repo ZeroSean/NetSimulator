@@ -43,6 +43,8 @@ GraphicsWidget::GraphicsWidget(QWidget *parent) :
     _ignore = true;
     _tagSize = 0.15;
 
+    insTag = NULL;
+
     QObject::connect(DisplayApplication::viewSettings(), SIGNAL(ancConfigFileChanged()), this, SLOT(ancConfigFileChanged()));
 
     DisplayApplication::connectReady(this, "onReady()");
@@ -56,6 +58,16 @@ void GraphicsWidget::onReady() {
 }
 
 GraphicsWidget::~GraphicsWidget() {
+    if(_coor) {
+        _coor->quit();
+        QThread::usleep(2000);
+        delete _coor;
+        _coor = NULL;
+    }
+
+    clearAnchors();
+    clearTags();
+
     delete _scene;
     delete ui;
 }
@@ -175,6 +187,13 @@ void GraphicsWidget::clearTags() {
                 delete(tag->tagLabel);
                 tag->tagLabel = NULL;
             }
+            if(tag->routeLine) {
+                tag->routeLine->setOpacity(0);
+                this->_scene->removeItem(tag->routeLine);
+                delete(tag->routeLine);
+                tag->routeLine = NULL;
+            }
+
             //删除历史数据
             for(int idx = 0; idx < _historyLength; ++idx) {
                 QAbstractGraphicsShapeItem *tag_p = tag->p[idx];
@@ -193,7 +212,31 @@ void GraphicsWidget::clearTags() {
     }
     _tags.clear();
 
+    if(insTag) {
+        QObject::disconnect(insTag, SIGNAL(tagConnectFinished(quint16,quint16,bool)), this, SLOT(drawRoutePathFromTag(uint16_t,uint16_t,bool)));
+        delete insTag;
+    }
+
     qDebug() << "clear tags";
+}
+
+void GraphicsWidget::clearRouteLines() {
+    for(Tag *tag : _tags) {
+        if(tag->routeLine) {
+            tag->routeLine->setOpacity(0);
+            this->_scene->removeItem(tag->routeLine);
+            delete(tag->routeLine);
+            tag->routeLine = NULL;
+        }
+    }
+
+    for(QGraphicsLineItem *line : _routePath) {
+        QPen pen = QPen(QBrush(Qt::red), 0.005);
+        pen.setStyle(Qt::SolidLine);
+        pen.setWidthF(0.03);
+        line->setPen(pen);
+    }
+    _routePath.clear();
 }
 
 void GraphicsWidget::clearAnchors() {
@@ -353,6 +396,11 @@ void GraphicsWidget::tagPos(quint64 tagId, double x, double y, double z) {
         }
 
         tag->tagLabel->setPos(x + 0.15, y + 0.15);
+
+        tag->x = x;
+        tag->y = y;
+        tag->z = z;
+        tag->commuRange = _commuRangeVal;
 
         _ignore = false;
         _busy = false;
@@ -753,13 +801,11 @@ void GraphicsWidget::netConnectFinished(quint16 src, QSet<quint16> dsts, quint16
 }
 
 void GraphicsWidget::drawRoutePath(uint16_t start, uint16_t end, bool show) {
-    for(QGraphicsLineItem *line : _routePath) {
-        QPen pen = QPen(QBrush(Qt::red), 0.005);
-        pen.setStyle(Qt::SolidLine);
-        pen.setWidthF(0.03);
-        line->setPen(pen);
+    clearRouteLines();
+
+    if(_coor) {
+        _coor->runTag(false);
     }
-    _routePath.clear();
 
     if(show) {
         uint16_t pre = start;
@@ -821,11 +867,110 @@ void GraphicsWidget::drawRoutePath(uint16_t start, uint16_t end, bool show) {
 //onlu one tag of id[0x8001] be used to draw route path
 void GraphicsWidget::tagConfigChanged(double x, double y) {
     tagPos(0x8001, x, y, 0);
+
+    if(_coor && insTag == NULL) {
+        insTag = new InstanceTag(_coor);
+        _coor->addTag(insTag, 0x8001, x, y, 0, _commuRangeVal, 1);
+
+        QObject::connect(insTag, SIGNAL(tagConnectFinished(quint16,quint16,bool)), this, SLOT(drawRoutePathFromTag(quint16,quint16,bool)));
+    }
+
+    if(insTag){
+        insTag->setPos(x, y, 0);
+        insTag->clearBCNLog();
+    }
+
+    if(_coor) {
+        _coor->runTag(true);
+    }
+
+    //drawRoutePathFromTag(0x8001, 15, true);
 }
 
-void GraphicsWidget::drawRoutePathFromTag(uint16_t tagId, uint16_t start, uint16_t end, bool show) {
+void GraphicsWidget::drawRoutePathFromTag(quint16 tagId, quint16 start, bool show) {
     Tag *tag = _tags.value(tagId, NULL);
+    int error = 0;
+    QString info = "out--len--dest\n";
 
-    drawRoutePath(start, end, show);
+    clearRouteLines();
+
+    if(show && tag != NULL) {
+        Anchor *anc = _anchors.value(start, NULL);
+
+        if(anc == NULL) {
+            error = 5;
+            emit routeMsgShow("cant find anchor:" + QString::number(start));
+        } else {
+            if(tag->routeLine == NULL) {
+                tag->routeLine = this->_scene->addLine(tag->x, tag->y, anc->x, anc->y);
+            }
+            QPen pen = QPen(QBrush(Qt::darkRed), 0.005);
+            pen.setStyle(Qt::DotLine);
+            pen.setWidthF(0.05);
+
+            tag->routeLine->setPen(pen);
+            tag->routeLine->setOpacity(1);
+            tag->routeLine->setZValue(10);    //绘制在最顶部
+        }
+    } else {
+        error = 6;
+    }
+
+    if(show) {
+        uint16_t pre = start;
+
+        while(true) {
+            InstanceAnch *insAnc = _insAnchors.value(pre, NULL);
+            Anchor *beginAnc = _anchors.value(pre, NULL);
+
+            if(insAnc == NULL || beginAnc == NULL) {
+                error = 1;
+                emit routeMsgShow("cant find anchor:" + QString::number(pre));
+                break;
+            } else if(insAnc->isGateway()) {
+                break;
+            }
+
+            int next = insAnc->getGatewayOutPort();
+            if(next == -1) {
+                emit routeMsgShow("cant find gateway out port in route table:" + QString::number(pre));
+                error = 2;
+                break;
+            }
+
+            QGraphicsLineItem *line = beginAnc->allLines.value(next, NULL);
+            if(line == NULL) {
+                line = addNewLine(beginAnc, _anchors.value(next, NULL));
+
+                if(line == NULL) {
+                    emit routeMsgShow("cant find line:" + QString::number(pre) + "--->" + QString::number(next));
+                    error = 3;
+                    break;
+                }
+            }
+
+            info += "Anchor: " + QString::number(pre) + "\n";
+            info += insAnc->routeToString() + "\n";
+
+            _routePath.insert(line);
+            pre = next;
+        }
+
+
+    }
+
+    if(error == 0) {
+        QPen pen = QPen(QBrush(Qt::darkRed), 0.005);
+        pen.setStyle(Qt::DotLine);
+        pen.setWidthF(0.05);
+
+        for(QGraphicsLineItem *line : _routePath) {
+            line->setPen(pen);
+        }
+
+        emit routeMsgShow(info);
+    } else {
+        clearRouteLines();
+    }
 }
 

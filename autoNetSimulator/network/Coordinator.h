@@ -44,6 +44,8 @@ public:
 
     int sendMsg(InstanceCommon *inst, uint8 *data, uint16 len, uint32 dely);
     void addAnchor(InstanceCommon *anc, uint32 id, double x, double y, double z, double range, uint8 mode);
+    void addTag(InstanceCommon *tag, uint32 id, double x, double y, double z, double range, uint8 mode);
+    void runTag(bool isRun);
 
     virtual void run();
 
@@ -53,6 +55,9 @@ private:
 
     QMap<uint64, InstanceCommon*> instances;
     QMap<uint64, QMap<uint64, InstanceCommon*> > inRangeInstances;
+
+    QMap<uint64, InstanceCommon*> instanceTags;
+    bool _runTag;
 
 };
 

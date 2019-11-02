@@ -66,6 +66,7 @@ public:
 
 signals:
     void netConnectFinished(quint16 src, QSet<quint16> dsts, quint16 seat);
+    void tagConnectFinished(quint16 tagId, quint16 start, bool show);
 
 public:
     QSet<quint16> connectSrcAddrs;

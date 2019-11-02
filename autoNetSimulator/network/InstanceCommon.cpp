@@ -579,6 +579,8 @@ void InstanceCommon::set_replydelay(int delayus) {
         inst->fixedPollDelayAnc32h = ((uint64)convert_usec_to_devtimeu(pollframe + RX_RESPONSE_TURNAROUND_6M8)) >> 8;
         inst->fixedFinalDelayAnc32h = ((uint64)convert_usec_to_devtimeu(finalframe + RX_RESPONSE_TURNAROUND_6M8)) >> 8;
 
+        inst->fixedPollDelayAnc_us = pollframe + RX_RESPONSE_TURNAROUND_6M8;
+
         inst->fixedGuardDelay32h = ((uint64)convert_usec_to_devtimeu(pollframe + 2 * RX_RESPONSE_TURNAROUND_6M8)) >> 8;
         inst->fixedOffsetDelay32h = ((uint64)convert_usec_to_devtimeu((grppollframe / 2 + RX_RESPONSE_TURNAROUND_6M8 / 2))) >> 8;
     }

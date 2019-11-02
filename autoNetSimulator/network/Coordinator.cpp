@@ -108,6 +108,8 @@ Coordinator::Coordinator() :
 {
     listSize = 0;
     portGetTickCntInit();
+
+    _runTag = false;
 }
 
 Coordinator::~Coordinator() {
@@ -118,6 +120,12 @@ double distance(const double pos[3], const double pos2[3]) {
     double dpow2 = (pos[0] - pos2[0]) * (pos[0] - pos2[0])
             + (pos[1] - pos2[1]) * (pos[1] - pos2[1])
             + (pos[2] - pos2[2]) * (pos[2] - pos2[2]);
+    return sqrt(dpow2);
+}
+
+double distance2(const double pos[3], const double pos2[3]) {
+    double dpow2 = (pos[0] - pos2[0]) * (pos[0] - pos2[0])
+            + (pos[1] - pos2[1]) * (pos[1] - pos2[1]);
     return sqrt(dpow2);
 }
 
@@ -147,6 +155,24 @@ void Coordinator::addAnchor(InstanceCommon *anc, uint32 id, double x, double y, 
     instances.insert(id, anc);
 }
 
+void Coordinator::addTag(InstanceCommon *tag, uint32 id, double x, double y, double z, double range, uint8 mode) {
+    tag->init(TAG);
+    tag->set_16bit_address(id);
+    qDebug() << "Address:" << id;
+
+    tag->setPos(x, y, z);
+    tag->setRange(range);
+
+    mode = 1;
+    tag->instance_config(&chConfig[mode], &sfConfig[mode]);
+
+    instanceTags.insert(id, tag);
+}
+
+void Coordinator::runTag(bool isRun) {
+    _runTag = isRun;
+}
+
 void Coordinator::run() {
     while(true) {
         for(InstanceCommon* instance : instances) {
@@ -163,6 +189,18 @@ void Coordinator::run() {
             for(InstanceCommon* instance : inRangeInstances[srcID]) {
                 instance->rx_ok_cb(&msg->data);
             }
+
+            if(_runTag) {
+                for(InstanceCommon* instance : instanceTags) {
+                    double dis = distance2(instance->getPos(), msg->instance->getPos());
+
+                    if(msg->instance->getRange() >= dis) {
+                        instance->rx_ok_cb(&msg->data);
+                        instance->run();
+                    }
+                }
+            }
+
             msg->instance->tx_conf_cb(&msg->data);
 
             delete msg;

@@ -8,6 +8,7 @@
 
 #include "Coordinator.h"
 #include "InstanceAnch.h"
+#include "InstanceTag.h"
 
 namespace Ui{
 class GraphicsWidget;
@@ -22,11 +23,19 @@ class QGraphicsItem;
 
 struct Tag{
     Tag(void) {
+        id = 0;
         idx = 0;
+        routeLine= NULL;
+        avgp = NULL;
+        r95p = NULL;
+        tagLabel= NULL;
     }
+
     quint64 id;
     int idx;    //history index
     QVector<QAbstractGraphicsShapeItem *> p;
+    QGraphicsLineItem *routeLine;
+
     QAbstractGraphicsShapeItem *avgp;
     QAbstractGraphicsShapeItem *r95p;   //r95 circle around the average point, average of 100
 
@@ -40,6 +49,11 @@ struct Tag{
     double colourH;
     double colourS;
     double colourV;
+
+    double x;
+    double y;
+    double z;
+    double commuRange;
 };
 
 struct Anchor{
@@ -113,6 +127,7 @@ public slots:
 
     void clearTags(void);
     void clearAnchors(void);
+    void clearRouteLines(void);
 
     void setShowTagHistory(bool show);
     void communicateRangeValue(double value);
@@ -124,11 +139,12 @@ public slots:
     void tagConfigChanged(double x, double y);
 
     void drawRoutePath(uint16_t start, uint16_t end, bool show);
-    void drawRoutePathFromTag(uint16_t tagId, uint16_t start, uint16_t end, bool show);
+
 
 protected slots:
     void onReady();
 
+    void drawRoutePathFromTag(quint16 tagId, quint16 start, bool show);
     void netConnectFinished(quint16 src, QSet<quint16> dst, quint16 seat);
 
 protected:
@@ -153,6 +169,8 @@ private:
 
     Coordinator *_coor;
     QMap<quint64, InstanceAnch*> _insAnchors;
+
+    InstanceTag *insTag;
 
 
     QSet<QGraphicsLineItem *> _routePath;

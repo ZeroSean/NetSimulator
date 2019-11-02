@@ -16,6 +16,18 @@ int InstanceAnch::getRouteOutPort(uint16_t dest) {
     return this->route.getOutPort(dest);
 }
 
+int InstanceAnch::getGatewayOutPort() {
+    uint16_t out = this->route.getGatewayOut();
+
+    return out == 0xffff ? -1 : out;
+}
+
+int InstanceAnch::getGatewayDstAddr() {
+    uint16_t out = this->route.getGatewayAddr();
+
+    return out == 0xffff ? -1 : out;
+}
+
 QString InstanceAnch::routeToString() {
     return this->route.toString();
 }
@@ -494,6 +506,10 @@ void InstanceAnch::anchor_init(instance_data_t* inst) {
     inst->bcnmag.bcnFlag = 0;
 
     inst->jcofmsg.clusterLock = 0;
+
+    if(isGateway()) {
+        route.update(inst->instanceAddress16, inst->instanceAddress16, 0, 1);
+    }
 
     BCNLog_Clear(inst);
 }

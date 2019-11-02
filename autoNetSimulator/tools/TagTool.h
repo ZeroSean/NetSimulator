@@ -18,11 +18,22 @@ public:
 
     virtual QCursor cursor();
 
+    virtual void draw(QPainter *painter, const QRectF &rect, const QPointF &cursor);
+
     virtual void clicked(const QPointF &scenePos);
 
-signals:
+    void updatePosition(const QPointF &scenePos);
 
 public slots:
+    virtual void cancel();
+
+public:
+    enum State {
+        NoClicked,
+        Clicked
+    };
+
+    State _state;
 
 };
 
