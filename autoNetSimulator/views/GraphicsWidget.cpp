@@ -59,10 +59,11 @@ void GraphicsWidget::onReady() {
 
 GraphicsWidget::~GraphicsWidget() {
     if(_coor) {
-        _coor->quit();
-        QThread::usleep(2000);
+        _coor->requestInterruption();
+        //QThread::usleep(2000);
         delete _coor;
         _coor = NULL;
+        qDebug() << "coordinator thread exit!";
     }
 
     clearAnchors();
@@ -209,11 +210,12 @@ void GraphicsWidget::clearTags() {
         }
         delete(tag);
         *i = NULL;
+        i++;
     }
     _tags.clear();
 
     if(insTag) {
-        QObject::disconnect(insTag, SIGNAL(tagConnectFinished(quint16,quint16,bool)), this, SLOT(drawRoutePathFromTag(uint16_t,uint16_t,bool)));
+        QObject::disconnect(insTag, SIGNAL(tagConnectFinished(quint16,quint16,bool)), this, SLOT(drawRoutePathFromTag(quint16,quint16,bool)));
         delete insTag;
     }
 
@@ -280,11 +282,12 @@ void GraphicsWidget::clearAnchors() {
         }
         delete(anc);
         *i = NULL;
+        i++;
     }
     _anchors.clear();
 
     for(InstanceAnch *ins : _insAnchors) {
-        QObject::disconnect(ins, SIGNAL(netConnectFinished(uint16,QSet<uint16>,uint16)), this, SLOT(netConnectFinished(uint16,QSet<uint16>,uint16)));
+        QObject::disconnect(ins, SIGNAL(netConnectFinished(quint16,QSet<quint16>,quint16)), this, SLOT(netConnectFinished(quint16,QSet<quint16>,quint16)));
         delete ins;
     }
     _insAnchors.clear();
@@ -706,7 +709,7 @@ void GraphicsWidget::ancConfigFileChanged() {
         QString line = "";
 
         if(_coor != NULL) {
-            _coor->quit();
+            _coor->requestInterruption();
             QThread::usleep(2000);
             delete _coor;
             _coor = NULL;

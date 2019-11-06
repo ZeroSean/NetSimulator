@@ -114,6 +114,9 @@ Coordinator::Coordinator() :
 
 Coordinator::~Coordinator() {
     msgListClear();
+    requestInterruption();
+    quit();
+    wait();
 }
 
 double distance(const double pos[3], const double pos2[3]) {
@@ -174,7 +177,7 @@ void Coordinator::runTag(bool isRun) {
 }
 
 void Coordinator::run() {
-    while(true) {
+    while(!isInterruptionRequested()) {
         for(InstanceCommon* instance : instances) {
             instance->run();    //运行该节点
             //qDebug() << "run instance:" << instance->address();

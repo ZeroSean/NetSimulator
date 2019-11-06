@@ -20,12 +20,12 @@ QCursor TagTool::cursor()
 }
 
 void TagTool::updatePosition(const QPointF &scenePos) {
-    ViewSettings *vs = DisplayApplication::viewSettings();
-    QPointF b = vs->floorplanTransform().inverted().map(scenePos);
+    //ViewSettings *vs = DisplayApplication::viewSettings();
+    //QPointF b = vs->floorplanTransform().inverted().map(scenePos);
 
     //qDebug() << b.x() << b.y();
 
-    DisplayApplication::graphicsWidget()->tagConfigChanged(b.x(), b.y());
+    DisplayApplication::graphicsWidget()->tagConfigChanged(scenePos.x(), scenePos.y());
 }
 
 void TagTool::clicked(const QPointF &scenePos)
