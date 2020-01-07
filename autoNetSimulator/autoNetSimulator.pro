@@ -4,14 +4,14 @@
 #
 #-------------------------------------------------
 
-QT       += core gui xml
+QT       += core gui xml network
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET = autoNetSimulator
 TEMPLATE = app
 
-INCLUDEPATH += models network views util tools
+INCLUDEPATH += models network views util tools UDP
 
 INCLUDEPATH += $$PWD/armadillo-3.930.0/include
 
@@ -37,7 +37,8 @@ SOURCES += main.cpp \
     network/InstanceCommon.cpp \
     network/InstanceTag.cpp \
     tools/TagTool.cpp \
-    network/RouteTable.cpp
+    network/RouteTable.cpp \
+    UDP/udpserver.cpp
 
 HEADERS  += \
     views/mainwindow.h \
@@ -59,7 +60,8 @@ HEADERS  += \
     network/InstanceCommon.h \
     network/RouteTable.h \
     tools/TagTool.h \
-    network/InstanceTag.h
+    network/InstanceTag.h \
+    UDP/udpserver.h
 
 FORMS    += \
     views/mainwindow.ui \

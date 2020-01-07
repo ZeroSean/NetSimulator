@@ -46,7 +46,7 @@ ViewSettingsWidget::ViewSettingsWidget(QWidget *parent) :
 
     QObject::connect(DisplayApplication::viewSettings(), SIGNAL(ancConfigFileChanged()), this, SLOT(ancConfigFileChanged()));
 
-    QObject::connect(ui->logging_pb, SIGNAL(clicked(bool)), this, SLOT(loggingClicked()));
+    QObject::connect(ui->simulate_pb, SIGNAL(clicked(bool)), this, SLOT(simulateClicked()));
 
     QObject::connect(ui->scaleX_pb, SIGNAL(clicked(bool)), this, SLOT(scaleClicked()));
 
@@ -58,18 +58,20 @@ ViewSettingsWidget::ViewSettingsWidget(QWidget *parent) :
 
     QObject::connect(ui->tagConfig_pb, SIGNAL(clicked(bool)), this, SLOT(tagConfigClicked()));
 
-    _logging = false;
+    QObject::connect(ui->udp_pb, SIGNAL(clicked(bool)), this, SLOT(UDPStartClicked()));
+
+    _simulate = false;
 
     ui->label_logfile->setText("");
-    if(_logging) {
-        ui->logging_pb->setText("Stop");
-        ui->label_logingstatus->setText("Logging anabled.");
+    if(_simulate) {
+        ui->simulate_pb->setText("Stop");
+        ui->label_simulatestatus->setText("simulate anabled.");
     } else {
-        ui->logging_pb->setText("Start");
-        ui->label_logingstatus->setText("Logging disabled.");
+        ui->simulate_pb->setText("Start");
+        ui->label_simulatestatus->setText("simulate disabled.");
     }
 
-
+    _udpServer = NULL;
 
     DisplayApplication::connectReady(this, "onReady()");
 }
@@ -110,9 +112,14 @@ void ViewSettingsWidget::onReady() {
     DisplayApplication::graphicsWidget()->setShowTagHistory(ui->showTagHistory->isChecked());
 
     QObject::connect(DisplayApplication::graphicsWidget(), SIGNAL(routeMsgShow(QString)), this, SLOT(routeMsgShow(QString)));
+
+    QObject::connect(ui->simulate_pb, SIGNAL(clicked(bool)), DisplayApplication::graphicsWidget(), SLOT(simulateChanged()));
 }
 
 ViewSettingsWidget::~ViewSettingsWidget() {
+    if(_udpServer != NULL) {
+        delete _udpServer;
+    }
     delete ui;
 }
 
@@ -229,18 +236,18 @@ void ViewSettingsWidget::tagHistoryShowClicked() {
     DisplayApplication::graphicsWidget()->setShowTagHistory(ui->showTagHistory->isChecked());
 }
 
-void ViewSettingsWidget::loggingClicked() {
-    if(_logging == false) {
-        _logging = true;
-        ui->logging_pb->setText("Stop");
-        ui->label_logingstatus->setText("Logging enabled.");
+void ViewSettingsWidget::simulateClicked() {
+    if(_simulate == false) {
+        _simulate = true;
+        ui->simulate_pb->setText("Stop");
+        ui->label_simulatestatus->setText("Simulate enabled.");
         //ui->label_logfile(DisplayApplication::comsumer()->getLogFilePath());
     } else {
-        ui->logging_pb->setText("Start");
-        ui->label_logingstatus->setText("Logging disabled.");
+        ui->simulate_pb->setText("Start");
+        ui->label_simulatestatus->setText("Simulate disabled.");
         ui->label_logfile->setText("");
         ui->saveFP->setChecked(false);
-        _logging = false;
+        _simulate = false;
     }
 }
 
@@ -314,6 +321,28 @@ void ViewSettingsWidget::tagConfigClicked() {
 
     QObject::connect(tool, SIGNAL(done(bool)), tool, SLOT(deleteLater()));
     DisplayApplication::graphicsView()->setTool(tool);
+}
+
+void ViewSettingsWidget::UDPStartClicked(void) {
+    if(_udpServer == NULL) {
+       quint16 port = ui->port_sb->value();
+       _udpServer = new UDPServer(port);
+
+       ui->srcIP_lable->setText("Server IP: " + _udpServer->getServerIP());
+
+       QObject::connect(_udpServer, SIGNAL(recTagPosition(quint64,double,double,double)),
+                        DisplayApplication::graphicsWidget(), SLOT(tagPos(quint64,double,double,double)));
+
+       ui->udp_pb->setText("Close");
+    } else {
+        QObject::disconnect(_udpServer, SIGNAL(recTagPosition(quint64,double,double,double)),
+                         DisplayApplication::graphicsWidget(), SLOT(tagPos(quint64,double,double,double)));
+
+        delete _udpServer;
+        _udpServer = NULL;
+
+        ui->udp_pb->setText("Listen");
+    }
 }
 
 

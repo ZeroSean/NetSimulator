@@ -2,6 +2,7 @@
 #define VIEWSETTINGSWIDGET_H
 
 #include <QWidget>
+#include "udpserver.h"
 
 namespace Ui {
 class ViewSettingsWidget;
@@ -47,7 +48,7 @@ protected slots:
     void showSave(bool arg);
 
     void setTagHistory(int h);
-    void loggingClicked(void);
+    void simulateClicked(void);
 
     void tagConfigClicked(void);
 
@@ -55,12 +56,16 @@ protected slots:
     void routePathChanged();
     void routeMsgShow(QString msg);
 
+    void UDPStartClicked(void);
+
 private:
     Ui::ViewSettingsWidget *ui;
 
-    bool _logging;
+    bool _simulate;
     bool _floorplanOpen;
     bool _ancConfigSelect;
+
+    UDPServer *_udpServer;
 
 };
 

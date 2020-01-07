@@ -136,6 +136,8 @@ public slots:
 
     void ancConfigFileChanged();
 
+    void simulateChanged(void);
+
     void tagConfigChanged(double x, double y);
 
     void drawRoutePath(uint16_t start, uint16_t end, bool show);
@@ -162,8 +164,10 @@ private:
     int _historyLength;
     int _showHistory;
     int _showHistoryP;
+
     bool _busy;
     bool _ignore;
+    bool _simulating;
 
     double _commuRangeVal;
 

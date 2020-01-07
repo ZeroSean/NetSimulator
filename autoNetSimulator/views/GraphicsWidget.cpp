@@ -41,6 +41,7 @@ GraphicsWidget::GraphicsWidget(QWidget *parent) :
     _showHistory = _showHistoryP = false;
     _busy = true;
     _ignore = true;
+    _simulating = false;
     _tagSize = 0.15;
 
     insTag = NULL;
@@ -407,6 +408,8 @@ void GraphicsWidget::tagPos(quint64 tagId, double x, double y, double z) {
 
         _ignore = false;
         _busy = false;
+
+        //qDebug() << "Tag: 0x" + QString::number(tagId, 16) << " " << x << " " << y << " " << z;
     }
 }
 
@@ -697,8 +700,27 @@ void GraphicsWidget::anchPos(quint64 anchId, double x, double y, double z, doubl
     }
 }
 
+void GraphicsWidget::simulateChanged(void) {
+    if(_simulating) {
+        _simulating = false;
+        if(_coor != NULL) {
+            _coor->requestInterruption();
+            QThread::usleep(200);
+            delete _coor;
+            _coor = NULL;
+        }
+    } else {
+        _simulating = true;
+        ancConfigFileChanged();
+    }
+}
+
 void GraphicsWidget::ancConfigFileChanged() {
     QString path = DisplayApplication::viewSettings()->getAncConfigFilePath();
+
+    if(path.isEmpty() || path.isNull()) {
+        return;
+    }
 
     QFile file(path);
     if(!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -733,7 +755,7 @@ void GraphicsWidget::ancConfigFileChanged() {
             sscanf(cLine.c_str(), "%d:(%lf, %lf, %lf):%d", &id, &x, &y, &z, &gateway);
 
             anchPos(id, x, y, z, _commuRangeVal, true, gateway);
-            qDebug() << id << x << y << z << gateway;
+            //qDebug() << id << x << y << z << gateway;
 
             InstanceAnch *ins = new InstanceAnch(_coor, gateway);
             _coor->addAnchor(ins, id, x, y, z, _commuRangeVal, 1);
@@ -744,7 +766,9 @@ void GraphicsWidget::ancConfigFileChanged() {
                              this, SLOT(netConnectFinished(quint16,QSet<quint16>,quint16)));
         }
 
-        _coor->start();
+        if(_simulating) {
+            _coor->start();
+        }
     }
 }
 
