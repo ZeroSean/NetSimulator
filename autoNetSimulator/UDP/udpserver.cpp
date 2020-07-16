@@ -1,13 +1,4 @@
 #include "UDPServer.h"
-#include <QUdpSocket>
-#include <QHostAddress>
-#include <QNetworkInterface>
-#include <QList>
-#include <QDebug>
-#include <QDateTime>
-#include <DisplayApplication.h>
-#include <ViewSettings.h>
-#include <QFile>
 
 #define STAT_CODE   (0x68)
 #define MSG_MIN_LEN (1 + 6 + 1 + 2 + 1 + 1)
@@ -20,10 +11,11 @@
 #define HEART       (0x05)
 #define TAGPOSITION (0xda)
 #define ANCPOSITION (0xc3)
+#define DANGER_AREA (0xc2)
 
-#define TAGINFOSIZE (19)    // 6 + 4 + 4 + 4 +1
+#define TAGINFOSIZE (21)    // 6 + 4 + 4 + 4 + 1 + 2
 
-QString byteArrayToString(const char *data, quint16 len) {
+QString byteArrayToString(const quint8 *data, quint16 len) {
     QString msg = "";
 
     for(int i = 0; i < len; i++) {
@@ -33,7 +25,7 @@ QString byteArrayToString(const char *data, quint16 len) {
     return msg;
 }
 
-quint8 checkSumCode(const char *data, quint16 len) {
+quint8 checkSumCode(const quint8 *data, quint16 len) {
     quint8 sum = 0;
     for(int i = 0; i < len; ++i) {
         sum += data[i];
@@ -41,7 +33,7 @@ quint8 checkSumCode(const char *data, quint16 len) {
     return sum;
 }
 
-qint16 fillData(char *sendBuf, quint8 ctrl, const char *recBuf, char *data=NULL, quint16 len=0) {
+qint16 fillData(quint8 *sendBuf, quint8 ctrl, const quint8 *recBuf, quint8 *data=NULL, quint16 len=0) {
     if(data == NULL) {
         len = 0;
     }
@@ -66,21 +58,34 @@ qint16 fillData(char *sendBuf, quint8 ctrl, const char *recBuf, char *data=NULL,
 }
 
 
-UDPServer::UDPServer(quint16 port)
+UDPServer::UDPServer(QString ip, quint16 port)
 {
     _port = port;
 
     QList<QHostAddress> ipAddressesList = QNetworkInterface::allAddresses();
-
+    QList<QString> ipList;
     for(int i = 0; i < ipAddressesList.size(); ++i) {
         if(ipAddressesList.at(i) != QHostAddress::LocalHost &&
            ipAddressesList.at(i).toIPv4Address()) {
-            _serverIP = ipAddressesList.at(i).toString();
+
+            QString value = ipAddressesList.at(i).toString();
+
+            ipList.append(value);
+            if(value == ip) {
+                _serverIP = value;
+                break;
+            }
+        }
+    }
+    if(_serverIP.isNull() || _serverIP.isEmpty()) {
+        if(!ipList.isEmpty()) {
+            _serverIP = ipList.back();
         }
     }
     if(_serverIP.isNull() || _serverIP.isEmpty()) {
         _serverIP = QHostAddress(QHostAddress::LocalHost).toString();
     }
+    //_serverIP = "192.168.1.106";
 
     qDebug() << "Starting udp server:" << _serverIP << "  port:" << _port;
 
@@ -93,6 +98,7 @@ UDPServer::UDPServer(quint16 port)
 
 UDPServer::~UDPServer() {
     qDebug() << "Close udp server:" << _serverIP << "  port:" << _port;
+    _clients.clear();
     delete _serversocket;
 }
 
@@ -102,55 +108,105 @@ QString UDPServer::getServerIP(void) {
 
 
 void UDPServer::readUDPData() {
-    char recBuf[1024] = {0};
-    char sendBuf[1024] = {0};
+    quint8 recBuf[1024] = {0};
+    quint8 sendBuf[1024] = {0};
     QHostAddress dstAddr;
     quint16 dstPort = 0;
 
     while(_serversocket->hasPendingDatagrams()) {
-        qint16 len = _serversocket->readDatagram(recBuf, sizeof(recBuf), &dstAddr, &dstPort);
+        qint16 len = _serversocket->readDatagram((char *)recBuf, sizeof(recBuf), &dstAddr, &dstPort);
 
-        qDebug() << "rec datagram: " << byteArrayToString(recBuf, len) << "src IP:" << dstAddr.toString();
+        QString client_key = dstAddr.toString() + ":" + QString::number(dstPort);
+        if(!_clients.contains(client_key)) {
+            ClientState client(dstAddr, dstPort);
+            _clients.insert(client_key, client);
+        }
+
+        qDebug() << "rec datagram: " << byteArrayToString(recBuf, len) << "src IP:" << dstAddr.toString() << "src Port:" << dstPort;
         //qDebug() << dstAddr.toString();
 
-        qint16 sendSize = getResponse(recBuf, len, sendBuf, 1024);
+        qint16 sendSize = getResponse((quint8 *)recBuf, len, sendBuf, 1024, client_key);
 
         if(sendSize > 0) {
             //qDebug() << "send datagram: " << byteArrayToString(sendBuf, sendSize);
-            _serversocket->writeDatagram(sendBuf, sendSize, dstAddr, dstPort);
+            _serversocket->writeDatagram((char *)sendBuf, sendSize, dstAddr, dstPort);
 
             if(recBuf[CTRL_OFFSET] == SETCLOCK) {
                 sendSize = fillAnchorsPosition(recBuf, len, sendBuf, 1024);
                 if(sendSize > 0) {
-                    _serversocket->writeDatagram(recBuf, sendSize, dstAddr, dstPort);
+                    _serversocket->writeDatagram((char *)sendBuf, sendSize, dstAddr, dstPort);
                 }
             }
         }
     }
 }
 
-int UDPServer::parseTagInfo(const char *data, quint16 len) {
+void UDPServer::dgAreaConfigChanged() {
+    quint8 recBuf[10] = {0x68, 0x41, 0x44, 0x30, 0x39, 0x30, 0x31, 0};
+    quint8 sendBuf[1024] = {0};
+
+    qint16 sendSize = fillDangerAreaData(recBuf, 10, sendBuf, 1024);
+
+    if(sendSize > 0) {
+        QMap<QString, ClientState>::iterator it_client = _clients.begin();
+
+        while(it_client != _clients.end()) {
+            _serversocket->writeDatagram((char *)sendBuf, sendSize, it_client.value().address, it_client.value().port);
+
+            it_client.value().isReponse_ForAreaUpdate = false;
+
+            qDebug() << "send danger area to dst IP:" << it_client.value().address.toString() << "dst Port:" << it_client.value().port;
+
+            it_client++;
+        }
+    }
+
+}
+
+int UDPServer::parseTagInfo(const quint8 *data, quint16 len) {
     if(len >= TAGINFOSIZE) {
         quint16 id = (data[4] << 8) + data[5];
         quint8 warnState = data[18] & 0x03;
-        quint8 locationState = (data[18] >> 4) & 0x0f;
+        quint8 locationNum = (data[18] >> 4) & 0x07;
+        quint8 isValid = data[18]& 0x80;
+        quint16 elecValue = (data[19] << 8) + data[20];
+
+        qDebug() << "tag[" << id << "] wanrn: " << ((quint8)data[18]) << "electronic:" << elecValue;
 
         if(warnState) {
             qDebug() << "tag[" << id << "] wanring state: " << warnState;
         }
 
-        if(locationState >= 3) {
+        if(isValid && locationNum >= 3) {
             qint32 qx = 0, qy = 0, qz = 0;
+
             qx = (data[6] << 24) + (data[7] << 16) + (data[8] << 8) + data[9];
             qy = (data[10] << 24) + (data[11] << 16) + (data[12] << 8) + data[13];
             qz = (data[14] << 24) + (data[15] << 16) + (data[16] << 8) + data[17];
 
-            qDebug() << "Tag " << id << " position: " << qx << " " << qy << " " << qz;
+            qDebug() << "Tag " << id << " position: (" << qx << ", " << qy << ", " << qz << ")";
 
-            emit recTagPosition(id, qx / 1000.0, qy / 1000.0, qz / 1000.0);
+            emit recTagPosition(id, qx / 1000.0, qy / 1000.0, qz / 1000.0, warnState);
 
+        } else if(isValid && locationNum == 2){
+            quint32 anch_id0 = (data[6] << 24) + (data[7] << 16) + (data[8] << 8) + data[9];
+            quint32 anch_id1 = (data[10] << 24) + (data[11] << 16) + (data[12] << 8) + data[13];
+            qint32 distance = (data[14] << 24) + (data[15] << 16) + (data[16] << 8) + data[17];
+
+            qDebug() << "tag[" << id << "] only receive " << locationNum << "anchors [" << anch_id0 << ","<< anch_id1 << "], distance:" << distance;
+
+            emit recTagPositionLine(id, anch_id0, anch_id1, distance / 1000.0);
+
+        } else if(isValid && locationNum == 1) {
+            quint32 anch_id = (data[6] << 24) + (data[7] << 16) + (data[8] << 8) + data[9];
+            qint32 distance = (data[14] << 24) + (data[15] << 16) + (data[16] << 8) + data[17];
+
+            qDebug() << "tag[" << id << "] only receive " << locationNum << "anchor [" << anch_id << "], distance:" << distance;
+
+            //draw the tag circle that the anchor is center point.
+            emit recTagPositionCircle(id, anch_id, distance / 1000.0);
         } else {
-            qDebug() << "tag[" << id << "] only receive " << locationState << "anchors.";
+            qDebug() << "Invalid Posisiotn from [" << id << "], flag=" << QString::number(data[18], 16);
         }
         return 0;
 
@@ -161,7 +217,7 @@ int UDPServer::parseTagInfo(const char *data, quint16 len) {
 }
 
 
-qint16 UDPServer::getResponse(const char *recBuf, quint16 recSize, char *sendBuf, quint16 maxSize) {
+qint16 UDPServer::getResponse(const quint8 *recBuf, quint16 recSize, quint8 *sendBuf, quint16 maxSize, QString clientKey) {
     quint8 error = 0;
     quint8 checkcode = 0;
     quint16 dataSize = 0;
@@ -211,7 +267,7 @@ qint16 UDPServer::getResponse(const char *recBuf, quint16 recSize, char *sendBuf
             QDateTime curDateTime = QDateTime::currentDateTime();
             QDate curDate = curDateTime.date();
             QTime curTime = curDateTime.time();
-            char clock[6] = {0};
+            quint8 clock[6] = {0};
 
             clock[0] = curDate.year() - 2000;
             clock[1] = curDate.month();
@@ -247,8 +303,8 @@ qint16 UDPServer::getResponse(const char *recBuf, quint16 recSize, char *sendBuf
                 offset += TAGINFOSIZE;
             }
 
-            char d[2] = {(char)0xaa, (char)0x55};
-            sendSize = fillData(sendBuf, SETCLOCK, recBuf, d, 2);
+            quint8 d[2] = {0xaa, 0x55};
+            sendSize = fillData(sendBuf, TAGPOSITION, recBuf, d, 2);
 
             break;
         }
@@ -257,6 +313,8 @@ qint16 UDPServer::getResponse(const char *recBuf, quint16 recSize, char *sendBuf
         {
             if(recBuf[DATA_OFFSET]) {
                 qDebug() << "Gateway success to receive anchors position.";
+                //发送完基站数据，接着发送危险区域数据
+                sendSize = fillDangerAreaData(recBuf, recSize, sendBuf, maxSize);
             } else {
                 qDebug() << "Gateway fail to receive anchors position.";
 
@@ -264,6 +322,28 @@ qint16 UDPServer::getResponse(const char *recBuf, quint16 recSize, char *sendBuf
             }
             break;
         }
+
+        case DANGER_AREA:
+        {
+            if(recBuf[DATA_OFFSET]) {
+                qDebug() << "Gateway success to receive danger area datas.";
+                if(_clients.contains(clientKey)) {
+                    _clients[clientKey].isReponse_ForAreaUpdate = true;
+                }
+            } else {
+                qDebug() << "Gateway fail to receive danger area datas.";
+            }
+            break;
+        }
+        case HEART:
+            qDebug() << "Receive gateway heart!";
+            if(_clients.contains(clientKey)) {
+                if(!_clients[clientKey].isReponse_ForAreaUpdate) {
+                    sendSize = fillDangerAreaData(recBuf, recSize, sendBuf, maxSize);
+                }
+            }
+
+            break;
 
         default:
         {
@@ -276,7 +356,7 @@ qint16 UDPServer::getResponse(const char *recBuf, quint16 recSize, char *sendBuf
     return sendSize;
 }
 
-qint16 UDPServer::fillAnchorsPosition(const char *recBuf, quint16 recSize, char *sendBuf, quint16 maxSize) {
+qint16 UDPServer::fillAnchorsPosition(const quint8 *recBuf, quint16 recSize, quint8 *sendBuf, quint16 maxSize) {
     Q_UNUSED(recSize);
 
     QString path = DisplayApplication::viewSettings()->getAncConfigFilePath();
@@ -292,7 +372,7 @@ qint16 UDPServer::fillAnchorsPosition(const char *recBuf, quint16 recSize, char 
     } else {
         QTextStream stream(&file);
         QString line = "";
-        char ancbuf[1024] = {0};
+        quint8 ancbuf[1024] = {0};
         quint8 ancnum = 0;
         quint16 off = 1;
 
@@ -333,6 +413,91 @@ qint16 UDPServer::fillAnchorsPosition(const char *recBuf, quint16 recSize, char 
 
         ancbuf[0] = ancnum;
         return fillData(sendBuf, ANCPOSITION, recBuf, ancbuf, off);
+    }
+
+    return 0;
+}
+
+qint16 UDPServer::fillDangerAreaData(const quint8 *recBuf, quint16 recSize, quint8 *sendBuf, quint16 maxSize) {
+    Q_UNUSED(recSize);
+
+    QString path = DisplayApplication::viewSettings()->getDgAreaConfigFilePath();
+
+    if(path.isEmpty() || path.isNull()) {
+        return 0;
+    }
+
+    QFile file(path);
+    if(!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qDebug(qPrintable(QString("Error: cannot read file (%1) %2").arg(path).arg(file.errorString())));
+        return 0;
+    } else {
+        QTextStream stream(&file);
+        QString line = "";
+        quint8 area_buf[1024] = {0};
+        quint8 area_num = 0;
+        quint16 off = 1, point_num = 0, total_num = 0;
+
+        while(!(line = stream.readLine()).isNull()) {
+            if(line.isEmpty() || line.isNull()) {
+                continue;
+            }
+
+            std::string cLine = line.toStdString();
+
+            if(cLine.find("Area ID") != std::string::npos) {
+                int area_id;
+                sscanf(cLine.c_str(), "Area ID:%d", &area_id);
+
+                area_buf[off+4] = (area_id >> 8) & 0xff;
+                area_buf[off+5] = area_id & 0xff;
+
+                off += 6 + 2; // id + length byte num
+                area_num += 1;
+                point_num = 0;
+            } else {
+                int point_id = 0;
+                qint32 qx = 0, qy = 0, qz = 0;
+                double x, y, z;
+
+                sscanf(cLine.c_str(), "Point %d:(%lf, %lf, %lf)", &point_id, &x, &y, &z);
+
+                qx = (x * 1000) / 1;
+                qy = (y * 1000) / 1;
+                qz = (z * 1000) / 1;
+
+                for(int i = 3; i >= 0; --i) {
+                    area_buf[off + 0 + i] = qx & 0xff;
+                    area_buf[off + 4 + i] = qy & 0xff;
+                    area_buf[off + 8 + i] = qz & 0xff;
+                    qx >>= 8;
+                    qy >>= 8;
+                    qz >>= 8;
+                }
+                point_num += 1;
+                total_num += 1;
+                off += 12;
+            }
+
+            if(point_num) {
+                quint16 size = 12 * point_num + 2;
+                area_buf[off - size] = (point_num >> 8) & 0xff;
+                area_buf[off - size + 1] = point_num & 0xff;
+            }
+
+            if(off >= (maxSize - MSG_MIN_LEN)) {
+                //目前不支持发送太大的危险区域点数
+                qDebug() << "The point number of danger area too much: " << total_num;
+
+                off -= (12 * point_num + 2 + 6);
+                area_num -= 1;
+                total_num -= point_num;
+                break;
+            }
+        }
+
+        area_buf[0] = area_num;
+        return fillData(sendBuf, DANGER_AREA, recBuf, area_buf, off);
     }
 
     return 0;

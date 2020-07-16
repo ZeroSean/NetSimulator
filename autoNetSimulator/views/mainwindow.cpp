@@ -182,6 +182,7 @@ void MainWindow::loadConfigFile(QString filename) {
                     vs->setSaveFP(((e.attribute("saveFP", "")).toInt() == 1) ? true : false);
 
                     vs->setAncConfigFilePath(e.attribute("ancPath", ""));
+                    vs->setDgAreaConfigFilePath(e.attribute("dgAreaPath", ""));
                 }
             }
             n = n.nextSibling();
@@ -221,6 +222,7 @@ void MainWindow::saveConfigFile(QString filename, QString cfg) {
         }
 
         cn.setAttribute("ancPath", vs->getAncConfigFilePath());
+        cn.setAttribute("dgAreaPath", vs->getDgAreaConfigFilePath());
 
         info.appendChild(cn);
     }

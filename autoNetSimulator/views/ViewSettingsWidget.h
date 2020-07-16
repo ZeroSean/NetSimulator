@@ -26,6 +26,8 @@ protected slots:
 
     void floorplanOpenClicked();
     void ancConfigSelectClicked();
+    void dgAreaConfigClicked();
+
     void originClicked();
     void scaleClicked();
     void gridShowClicked();
@@ -41,6 +43,7 @@ protected slots:
     void tagHistoryNumberValueChanged(int value);
 
     void ancConfigFileChanged();
+    void dgAreaConfigFileChanged();
 
     void showGridOrigin(bool grid, bool orig);
 
@@ -57,6 +60,7 @@ protected slots:
     void routeMsgShow(QString msg);
 
     void UDPStartClicked(void);
+    void tagPosShowChecked(void);
 
 private:
     Ui::ViewSettingsWidget *ui;

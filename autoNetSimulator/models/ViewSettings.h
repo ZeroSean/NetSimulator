@@ -56,7 +56,9 @@ public:
     const QString &getFloorplanPath(void);
 
     void setAncConfigFilePath(const QString &path);
+    void setDgAreaConfigFilePath(const QString &path);
     const QString &getAncConfigFilePath(void);
+    const QString &getDgAreaConfigFilePath(void);
 
     bool gridShow(void);
     bool originShow(void);
@@ -97,6 +99,7 @@ signals:
     void floorplanChanged();
 
     void ancConfigFileChanged();
+    void dgAreaConfigFileChanged();
 
     void showGO(bool a, bool b);
     void showSave(bool arg);
@@ -125,6 +128,7 @@ private:
     QString _floorplanPath;
 
     QString _ancConfigFilePath;
+    QString _dgAreaConfigFilePath;
 
     QTransform _floorplanTransform;
 };

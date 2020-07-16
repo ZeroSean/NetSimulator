@@ -1,1 +1,5 @@
 floorplan：450，450，60，60
+
+floorplan_with_anchors:  765, 780, 30, 30
+
+floorplan_cad: 815 810 30 30

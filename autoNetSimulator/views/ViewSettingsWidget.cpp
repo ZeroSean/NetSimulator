@@ -23,6 +23,7 @@ ViewSettingsWidget::ViewSettingsWidget(QWidget *parent) :
 
     QObject::connect(ui->floorplanOpen_pb, SIGNAL(clicked(bool)), this, SLOT(floorplanOpenClicked()));
     QObject::connect(ui->ancConfigSelect_pb, SIGNAL(clicked(bool)), this, SLOT(ancConfigSelectClicked()));
+    QObject::connect(ui->loadDgArea_pb, SIGNAL(clicked(bool)), this, SLOT(dgAreaConfigClicked()));
 
     QObject::connect(ui->scaleX_pb, SIGNAL(clicked(bool)), this, SLOT(scaleClicked()));
     QObject::connect(ui->scaleY_pb, SIGNAL(clicked(bool)), this, SLOT(scaleClicked()));
@@ -45,6 +46,7 @@ ViewSettingsWidget::ViewSettingsWidget(QWidget *parent) :
     QObject::connect(DisplayApplication::viewSettings(), SIGNAL(setFloorplanPic()), this, SLOT(getFloorplanPic()));
 
     QObject::connect(DisplayApplication::viewSettings(), SIGNAL(ancConfigFileChanged()), this, SLOT(ancConfigFileChanged()));
+    QObject::connect(DisplayApplication::viewSettings(), SIGNAL(dgAreaConfigFileChanged()), this, SLOT(dgAreaConfigFileChanged()));
 
     QObject::connect(ui->simulate_pb, SIGNAL(clicked(bool)), this, SLOT(simulateClicked()));
 
@@ -59,6 +61,9 @@ ViewSettingsWidget::ViewSettingsWidget(QWidget *parent) :
     QObject::connect(ui->tagConfig_pb, SIGNAL(clicked(bool)), this, SLOT(tagConfigClicked()));
 
     QObject::connect(ui->udp_pb, SIGNAL(clicked(bool)), this, SLOT(UDPStartClicked()));
+
+    QObject::connect(ui->showLine, SIGNAL(clicked(bool)), this, SLOT(tagPosShowChecked()));
+    QObject::connect(ui->showCircle, SIGNAL(clicked(bool)), this, SLOT(tagPosShowChecked()));
 
     _simulate = false;
 
@@ -114,6 +119,8 @@ void ViewSettingsWidget::onReady() {
     QObject::connect(DisplayApplication::graphicsWidget(), SIGNAL(routeMsgShow(QString)), this, SLOT(routeMsgShow(QString)));
 
     QObject::connect(ui->simulate_pb, SIGNAL(clicked(bool)), DisplayApplication::graphicsWidget(), SLOT(simulateChanged()));
+
+    tagPosShowChecked();
 }
 
 ViewSettingsWidget::~ViewSettingsWidget() {
@@ -192,6 +199,24 @@ void ViewSettingsWidget::ancConfigFileChanged() {
     if(!path.isNull()) {
 
         ui->ancConfigLable->setText("anc file:" + QFileInfo(path).fileName());
+    }
+}
+
+void ViewSettingsWidget::dgAreaConfigClicked() {
+    //参数：父组件、对话框标题、默认打开目录、后缀名过滤器
+    QString path = QFileDialog::getOpenFileName(this, "Select Danger Area Config", "./", "Txt (*.txt)");
+
+    if(path.isNull()) {
+        return;
+    }
+
+    DisplayApplication::viewSettings()->setDgAreaConfigFilePath(path);
+}
+
+void ViewSettingsWidget::dgAreaConfigFileChanged() {
+    QString path = DisplayApplication::viewSettings()->getDgAreaConfigFilePath();
+    if(!path.isNull()) {
+        ui->dgAreaLabel->setText("DgArea file:" + QFileInfo(path).fileName());
     }
 }
 
@@ -326,23 +351,50 @@ void ViewSettingsWidget::tagConfigClicked() {
 void ViewSettingsWidget::UDPStartClicked(void) {
     if(_udpServer == NULL) {
        quint16 port = ui->port_sb->value();
-       _udpServer = new UDPServer(port);
+       QString ip = ui->ip_edit->text();
+       _udpServer = new UDPServer(ip, port);
 
-       ui->srcIP_lable->setText("Server IP: " + _udpServer->getServerIP());
+       ui->ip_edit->setText(_udpServer->getServerIP());
 
-       QObject::connect(_udpServer, SIGNAL(recTagPosition(quint64,double,double,double)),
-                        DisplayApplication::graphicsWidget(), SLOT(tagPos(quint64,double,double,double)));
+       QObject::connect(_udpServer, SIGNAL(recTagPosition(quint64,double,double,double, quint8)),
+                        DisplayApplication::graphicsWidget(), SLOT(tagPos(quint64,double,double,double, quint8)));
+
+       QObject::connect(_udpServer, SIGNAL(recTagPositionCircle(quint64,quint64,double)),
+                        DisplayApplication::graphicsWidget(), SLOT(tagPosCircle(quint64,quint64,double)));
+
+       QObject::connect(_udpServer, SIGNAL(recTagPositionLine(quint64,quint64,quint64,double)),
+                        DisplayApplication::graphicsWidget(), SLOT(tagPosLine_withAnch(quint64,quint64,quint64,double)));
+
+       QObject::connect(DisplayApplication::viewSettings(), SIGNAL(dgAreaConfigFileChanged()), _udpServer, SLOT(dgAreaConfigChanged()));
 
        ui->udp_pb->setText("Close");
+       ui->ip_edit->setEnabled(false);
+       ui->port_sb->setEnabled(false);
+
     } else {
-        QObject::disconnect(_udpServer, SIGNAL(recTagPosition(quint64,double,double,double)),
-                         DisplayApplication::graphicsWidget(), SLOT(tagPos(quint64,double,double,double)));
+        QObject::disconnect(_udpServer, SIGNAL(recTagPosition(quint64,double,double,double, quint8)),
+                         DisplayApplication::graphicsWidget(), SLOT(tagPos(quint64,double,double,double, quint8)));
+
+        QObject::disconnect(_udpServer, SIGNAL(recTagPositionCircle(quint64,quint64,double)),
+                         DisplayApplication::graphicsWidget(), SLOT(tagPosCircle(quint64,quint64,double)));
+
+        QObject::disconnect(_udpServer, SIGNAL(recTagPositionLine(quint64,quint64,quint64,double)),
+                         DisplayApplication::graphicsWidget(), SLOT(tagPosLine_withAnch(quint64,quint64,quint64,double)));
+
+        QObject::disconnect(DisplayApplication::viewSettings(), SIGNAL(dgAreaConfigFileChanged()), _udpServer, SLOT(dgAreaConfigChanged()));
 
         delete _udpServer;
         _udpServer = NULL;
 
         ui->udp_pb->setText("Listen");
+        ui->ip_edit->setEnabled(true);
+        ui->port_sb->setEnabled(true);
     }
+}
+
+void ViewSettingsWidget::tagPosShowChecked() {
+    //设置是否显示标签只收到1、2个基站时的大概位置情况
+    DisplayApplication::graphicsWidget()->setTagShow(ui->showLine->isChecked(), ui->showCircle->isChecked());
 }
 
 

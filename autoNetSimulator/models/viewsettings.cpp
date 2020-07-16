@@ -17,7 +17,8 @@ ViewSettings::ViewSettings(QObject *parent)
       _showGrid(true),
       _floorplanShow(false),
       _floorplanPath(""),
-      _ancConfigFilePath("")
+      _ancConfigFilePath(""),
+      _dgAreaConfigFilePath("")
 {
     QObject::connect(this, SIGNAL(gridWidthChanged(double)), this, SLOT(viewSettingsChanged()));
     QObject::connect(this, SIGNAL(gridHeightChanged(double)), this, SLOT(viewSettingsChanged()));
@@ -240,5 +241,16 @@ const QString &ViewSettings::getAncConfigFilePath(void) {
     return _ancConfigFilePath;
 }
 
+void ViewSettings::setDgAreaConfigFilePath(const QString &path) {
+    if(!path.isNull()) {
+        if(_dgAreaConfigFilePath != path) {
+            _dgAreaConfigFilePath = path;
+            emit dgAreaConfigFileChanged();
+        }
+    }
+}
 
+const QString &ViewSettings::getDgAreaConfigFilePath(void) {
+    return _dgAreaConfigFilePath;
+}
 

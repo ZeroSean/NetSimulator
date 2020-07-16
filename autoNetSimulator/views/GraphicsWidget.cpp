@@ -16,9 +16,9 @@
 #include <QPen>
 #include <QDesktopWidget>
 
-#define PEN_WIDTH   (0.04)
+#define PEN_WIDTH   (0.15)
 #define ANC_SIZE    (0.15)
-#define FONT_SIZE   (10)
+#define FONT_SIZE   (12)
 
 
 GraphicsWidget::GraphicsWidget(QWidget *parent) :
@@ -42,11 +42,14 @@ GraphicsWidget::GraphicsWidget(QWidget *parent) :
     _busy = true;
     _ignore = true;
     _simulating = false;
-    _tagSize = 0.15;
+    _tagSize = 1.45;
+    _showCircle = true;
+    _showLine = true;
 
     insTag = NULL;
 
     QObject::connect(DisplayApplication::viewSettings(), SIGNAL(ancConfigFileChanged()), this, SLOT(ancConfigFileChanged()));
+    QObject::connect(DisplayApplication::viewSettings(), SIGNAL(dgAreaConfigFileChanged()), this, SLOT(dgAreaConfigFileChanged()));
 
     DisplayApplication::connectReady(this, "onReady()");
 }
@@ -67,6 +70,7 @@ GraphicsWidget::~GraphicsWidget() {
         qDebug() << "coordinator thread exit!";
     }
 
+    clearDangerArea();
     clearAnchors();
     clearTags();
 
@@ -194,6 +198,18 @@ void GraphicsWidget::clearTags() {
                 this->_scene->removeItem(tag->routeLine);
                 delete(tag->routeLine);
                 tag->routeLine = NULL;
+            }
+            if(tag->posCircle) {
+                tag->posCircle->setOpacity(0);
+                this->_scene->removeItem(tag->posCircle);
+                delete(tag->posCircle);
+                tag->posCircle = NULL;
+            }
+            if(tag->posLine) {
+                tag->posLine->setOpacity(0);
+                this->_scene->removeItem(tag->posLine);
+                delete(tag->posLine);
+                tag->posLine = NULL;
             }
 
             //删除历史数据
@@ -336,7 +352,7 @@ void GraphicsWidget::addNewTag(quint64 tagId) {
         tag->tagLabel->setFlag(QGraphicsItem::ItemIgnoresTransformations);
         tag->tagLabel->setZValue(1);
         tag->tagLabel->setText(tagLabel);
-        tag->tagLabel->setOpacity(0);
+        tag->tagLabel->setOpacity(1);
 
 
         QPen pen = QPen(Qt::blue);
@@ -354,7 +370,7 @@ void GraphicsWidget::addNewTag(quint64 tagId) {
 }
 
 //更新tag在视图中的位置
-void GraphicsWidget::tagPos(quint64 tagId, double x, double y, double z) {
+void GraphicsWidget::tagPos(quint64 tagId, double x, double y, double z, quint8 warnState) {
     if(_busy) {
         qDebug() << "(Widget - busy IGNORE) Tag: 0x" + QString::number(tagId, 16) << " " << x << " " << y << " " << z;
     } else {
@@ -369,37 +385,66 @@ void GraphicsWidget::tagPos(quint64 tagId, double x, double y, double z) {
         }
 
         if(tag && (!tag->p[tag->idx])) {
-            QAbstractGraphicsShapeItem *tag_pt = this->_scene->addEllipse(-1 * _tagSize / 2, -1 * _tagSize / 2,
-                                                                          _tagSize, _tagSize);
+            _tagSize = 0.40;
+            QAbstractGraphicsShapeItem *tag_pt = this->_scene->addRect(-1 * _tagSize / 2, -1 * _tagSize / 2,
+                                                                          _tagSize, _tagSize);  //addEllipse
+
             tag->p[tag->idx] = tag_pt;
             tag_pt->setPen(Qt::NoPen);
 
             if(tag->idx > 0) {
                 tag_pt->setBrush(tag->p[0]->brush());
             } else {
-                QBrush b = QBrush(Qt::black);
-                QPen pen = QPen(b.color().darker());
+                QBrush b = QBrush(Qt::blue);  //black
+                QPen pen = QPen(Qt::blue);  //b.color().darker()
                 pen.setStyle(Qt::SolidLine);
                 pen.setWidthF(PEN_WIDTH);
 
-                tag_pt->setBrush(b.color().dark());
-                tag->tagLabel->setBrush(b.color().dark());
+                tag_pt->setBrush(Qt::blue);
+
+                tag->tagLabel->setBrush(Qt::blue);
                 tag->tagLabel->setPen(pen);
             }
 
-            tag_pt->setToolTip("0x" + QString::number(tagId, 16));
+            tag_pt->setToolTip("Tag 0x" + QString::number(tagId, 16));
         }
 
+        //显示接收位置的计数值
+        if(tag->tagLabel) {
+            tag->posSeqNum += 1;
+            tag->tagLabelStr = QString("%1[%2]").arg(QString::number(tagId), QString::number(tag->posSeqNum));
+
+            tag->tagLabel->setText(tag->tagLabelStr);
+        }
+        tag->tagLabel->setPos(x + 0.15, y + 0.15);
+
         _ignore = true;
+
         tag->p[tag->idx]->setPos(x, y);
+        if(warnState) {
+            //bit[0]: 高压预警，bit[1]区域告警，bit[2]超高预警
+            //将标签标为红色
+            QPen pen = QPen(Qt::red);
+            pen.setStyle(Qt::SolidLine);
+            pen.setWidthF(PEN_WIDTH);
+
+            tag->p[tag->idx]->setBrush(Qt::red);
+            tag->tagLabel->setBrush(Qt::red);
+            //tag->tagLabel->setPen(pen);
+        } else {
+            QPen pen = QPen(Qt::blue);
+            pen.setStyle(Qt::SolidLine);
+            pen.setWidthF(PEN_WIDTH);
+            tag->p[tag->idx]->setBrush(Qt::blue);
+            tag->tagLabel->setBrush(Qt::blue);
+        }
+
         if(_showHistory) {
             tagHistory(tagId);
             tag->idx = (tag->idx + 1) % _historyLength;
         } else {
             tag->p[tag->idx]->setOpacity(1);
         }
-
-        tag->tagLabel->setPos(x + 0.15, y + 0.15);
 
         tag->x = x;
         tag->y = y;
@@ -409,7 +454,121 @@ void GraphicsWidget::tagPos(quint64 tagId, double x, double y, double z) {
         _ignore = false;
         _busy = false;
 
+        //每次都需要先把之前的圓圈刪除，然後再根據具體情況更新
+        if(tag->posCircle) {
+            this->_scene->removeItem(tag->posCircle);
+            delete (tag->posCircle);
+            tag->posCircle = NULL;
+        }
+        //每次都需要先把之前的連接綫刪除，如有需要，後續再繪製新的連接綫
+        if(tag->posLine) {
+            this->_scene->removeItem(tag->posLine);
+            delete (tag->posLine);
+            tag->posLine = NULL;
+        }
+
         //qDebug() << "Tag: 0x" + QString::number(tagId, 16) << " " << x << " " << y << " " << z;
+    }
+}
+
+void GraphicsWidget::tagPosCircle(quint64 tagId, quint64 anchId, double distance) {
+    //儅標簽只收到一個基站距離時，標簽在以基站為圓心，距離為半徑的圓上，此處將這個圓畫出來
+    if(!_showCircle) {
+        return;
+    }
+    if(_busy) {
+        qDebug() << "(busy IGNORE) Range 0x" + QString::number(tagId, 16) << " " << distance << " " << QString::number(anchId, 16);
+
+    } else {
+        Tag *tag = _tags.value(tagId, NULL);
+        Anchor *anch = _anchors.value(anchId, NULL);
+
+        if(!tag) {
+            addNewTag(tagId);
+            tag = this->_tags.value(tagId, NULL);
+        }
+
+        if(tag && anch) {
+            double tag_to_anch = (tag->x - anch->x) * (tag->x - anch->x) + (tag->y - anch->y) * (tag->y - anch->y);
+            tag->x = anch->x + (tag->x - anch->x) * distance / sqrt(tag_to_anch);
+            tag->y = anch->y + (tag->y - anch->y) * distance / sqrt(tag_to_anch);
+
+            tagPos(tagId, tag->x, tag->y, tag->z);
+
+            _busy = true;
+            if(tag->posCircle) {
+                this->_scene->removeItem(tag->posCircle);
+                delete (tag->posCircle);
+                tag->posCircle = NULL;
+            }
+
+            if(!tag->posCircle) {
+                tag->posCircle = this->_scene->addEllipse(-distance, -distance, 2 * distance, 2 * distance);
+                //tag->posCircle->setBrush(QBrush(QColor::fromRgb(102, 171, 13, 128))); //浅绿色
+                tag->posCircle->setToolTip("0x" + QString::number(tagId, 16));
+
+                QPen pen = QPen(QBrush(Qt::red), 0.005) ;
+                pen.setStyle(Qt::SolidLine);
+                pen.setWidthF(0.05);
+
+                tag->posCircle->setPen(pen);
+
+                tag->posCircle->setOpacity(1);
+                tag->posCircle->setPos(anch->x, anch->y);
+            }
+
+            _busy = false;
+        }
+    }
+}
+
+void GraphicsWidget::tagPosLine_withAnch(quint64 tagId, quint64 anchId0, quint64 anchId1, double distance) {
+    //儅標簽只收到2個基站距離時，無法定位出準確的標簽坐標，此時連接2個基站，那麽標簽必然在某個垂直于這條連綫的垂直面上。
+    if(!_showLine) {
+        return;
+    }
+    if(_busy) {
+        qDebug() << "(busy IGNORE) Pos Line 0x" + QString::number(tagId, 16) << " " << distance << " "
+                 << QString::number(anchId0, 16) << QString::number(anchId1, 16);
+
+    } else {
+        Tag *tag = _tags.value(tagId, NULL);
+        Anchor *anch0 = _anchors.value(anchId0, NULL);
+        Anchor *anch1 = _anchors.value(anchId1, NULL);
+
+        if(!tag) {
+            addNewTag(tagId);
+            tag = this->_tags.value(tagId, NULL);
+        }
+
+        if(tag && anch0 && anch1) {
+            double anch0_to_anch1 = (anch0->x - anch1->x) * (anch0->x - anch1->x) + (anch0->y - anch1->y) * (anch0->y - anch1->y);
+            tag->x = anch0->x + (anch1->x - anch0->x) * distance / sqrt(anch0_to_anch1);
+            tag->y = anch0->y + (anch1->y - anch0->y) * distance / sqrt(anch0_to_anch1);
+
+            tagPos(tagId, tag->x, tag->y, tag->z);
+
+            _busy = true;
+            if(tag->posLine) {
+                this->_scene->removeItem(tag->posLine);
+                delete (tag->posLine);
+                tag->posLine = NULL;
+            }
+
+            if(!tag->posLine) {
+                tag->posLine = this->_scene->addLine(anch0->x, anch0->y, anch1->x, anch1->y);
+
+                QPen pen = QPen(QBrush(Qt::red), 0.005);
+                pen.setStyle(Qt::DotLine);
+                pen.setWidthF(0.05);
+
+                tag->posLine->setPen(pen);
+                tag->posLine->setOpacity(1);
+                tag->posLine->setZValue(10);    //绘制在最顶部
+            }
+
+            _busy = false;
+        }
     }
 }
 
@@ -528,6 +687,7 @@ void GraphicsWidget::tagHistoryNumber(int value) {
 
     //先移除旧的历史数据
     setShowTagHistory(false);
+    //重置大小
     for(Tag *tag : _tags) {
         tag->p.resize(value);
     }
@@ -593,6 +753,11 @@ void GraphicsWidget::setShowTagHistory(bool set) {
     }
 
     _busy = false;
+}
+
+void GraphicsWidget::setTagShow(bool isShowLine, bool isShowCircle) {
+    _showLine = isShowLine;
+    _showCircle = isShowCircle;
 }
 
 void GraphicsWidget::addNewAnchor(quint64 ancId, bool show) {
@@ -998,6 +1163,116 @@ void GraphicsWidget::drawRoutePathFromTag(quint16 tagId, quint16 start, bool sho
         emit routeMsgShow(info);
     } else {
         clearRouteLines();
+    }
+}
+
+void GraphicsWidget::dgAreaConfigFileChanged() {
+    //当危险区域配置文件改变时，重新绘制危险区域
+    QString path = DisplayApplication::viewSettings()->getDgAreaConfigFilePath();
+
+    if(path.isEmpty() || path.isNull()) {
+        return;
+    }
+
+    QFile file(path);
+    if(!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qDebug(qPrintable(QString("Error: cannot read file (%1) %2").arg(path).arg(file.errorString())));
+        return;
+    } else {
+        QTextStream stream(&file);
+        QString line = "";
+        int area_id = 0;
+
+        clearDangerArea();
+
+        while(!(line = stream.readLine()).isNull()) {
+            qDebug() << line;
+
+            if(line.isEmpty() || line.isNull()) {
+                continue;
+            }
+
+            std::string cLine = line.toStdString();
+
+
+            if(cLine.find("Area ID") != std::string::npos) {
+                sscanf(cLine.c_str(), "Area ID:%d", &area_id);
+
+                if(_dangerAreas.value(area_id, NULL) != NULL) {
+                    qDebug() << "Invalid Danger Area Config, area id already exist: " << QString::number(area_id);
+                    clearDangerArea();
+                    break;
+                }
+
+                _dangerAreas.insert(area_id, new DangerArea(area_id));
+            } else {
+                int point_id = 0;
+                PointCord point;
+                sscanf(cLine.c_str(), "Point %d:(%lf, %lf, %lf)", &point_id, &point.x, &point.y, &point.z);
+
+                DangerArea *dg = _dangerAreas.value(area_id, NULL);
+                if(dg != NULL) {
+                    dg->points.push_back(point);
+                } else {
+                    qDebug() << "Invalid Danger Area Config, cannot find area id: " << QString::number(area_id);
+                    clearDangerArea();
+                    break;
+                }
+            }
+
+        }
+
+        //绘制区域图形
+        for(DangerArea *dg:_dangerAreas) {
+            if(dg->points.size() < 2) continue;
+
+            for(int i = 0, j = dg->points.size() - 1; i < dg->points.size(); j = i++) {
+                PointCord p1 = dg->points.at(j);
+                PointCord p2 = dg->points.at(i);
+                QGraphicsLineItem *line = this->_scene->addLine(p1.x, p1.y, p2.x, p2.y);
+                QPen pen = QPen(QBrush(Qt::red), 0.005);
+                pen.setStyle(Qt::DotLine);
+                pen.setWidthF(0.09);
+
+                line->setPen(pen);
+                line->setOpacity(1);
+
+                line->setZValue(10);    //绘制在最顶部
+
+                QString key = QString::number(j) + "-" + QString::number(i);
+                dg->lines.insert(key, line);
+
+                QString tip = "AreaID:" + QString::number(dg->id)
+                        + ", Line(" + QString::number(p1.x, 10, 2) + "," + QString::number(p1.y, 10, 2) + ")-("
+                        + QString::number(p2.x, 10, 2) + "," + QString::number(p2.y, 10, 2) + ")";
+                line->setToolTip(tip);
+            }
+
+        }
+        //qDebug() << "finish to load danger area!";
+    }
+}
+
+void GraphicsWidget::clearDangerArea() {
+    if(!_dangerAreas.isEmpty()) {
+        for(DangerArea *dg:_dangerAreas) {
+            if(dg != NULL && !dg->lines.isEmpty()) {
+                for(QGraphicsLineItem *line:dg->lines) {
+                    if(line != NULL) {
+                        line->setOpacity(0);
+                        this->_scene->removeItem(line);
+                        delete(line);
+                    }
+                }
+            }
+            if(dg != NULL) {
+                dg->lines.clear();
+                dg->points.clear();
+                delete(dg);
+            }
+        }
+
+        _dangerAreas.clear();
     }
 }
 

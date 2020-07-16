@@ -11,6 +11,8 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = autoNetSimulator
 TEMPLATE = app
 
+DEFINES += QT_MESSAGELOGCONTEXT
+
 INCLUDEPATH += models network views util tools UDP
 
 INCLUDEPATH += $$PWD/armadillo-3.930.0/include
@@ -61,7 +63,8 @@ HEADERS  += \
     network/RouteTable.h \
     tools/TagTool.h \
     network/InstanceTag.h \
-    UDP/udpserver.h
+    UDP/udpserver.h \
+    log.h
 
 FORMS    += \
     views/mainwindow.ui \
